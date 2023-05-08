@@ -198,6 +198,7 @@ func (h *ScanningOrFalse) UnmarshalJSON(data []byte) error {
 type GetWalletInfoResult struct {
 	WalletName            string          `json:"walletname"`
 	WalletVersion         int             `json:"walletversion"`
+	Format                string          `json:"format"`
 	TransactionCount      int             `json:"txcount"`
 	KeyPoolOldest         int             `json:"keypoololdest"`
 	KeyPoolSize           int             `json:"keypoolsize"`
@@ -207,6 +208,8 @@ type GetWalletInfoResult struct {
 	HDSeedID              *string         `json:"hdseedid,omitempty"`
 	PrivateKeysEnabled    bool            `json:"private_keys_enabled"`
 	AvoidReuse            bool            `json:"avoid_reuse"`
+	Descriptors           bool            `json:"descriptors"`
+	ExternalSigner        bool            `json:"external_signer"`
 	Scanning              ScanningOrFalse `json:"scanning"`
 }
 
