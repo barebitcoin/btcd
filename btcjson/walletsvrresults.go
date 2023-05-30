@@ -156,6 +156,8 @@ type GetTransactionResult struct {
 	TimeReceived    int64                         `json:"timereceived"`
 	Details         []GetTransactionDetailsResult `json:"details"`
 	Hex             string                        `json:"hex"`
+	ReplacesTXID    string                        `json:"replaces_txid"`
+	ReplacedByTXID  string                        `json:"replaced_by_txid"`
 }
 
 type ScanningOrFalse struct {
