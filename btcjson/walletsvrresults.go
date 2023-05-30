@@ -158,6 +158,13 @@ type GetTransactionResult struct {
 	Hex             string                        `json:"hex"`
 	ReplacesTXID    string                        `json:"replaces_txid"`
 	ReplacedByTXID  string                        `json:"replaced_by_txid"`
+
+	// Whether this transaction signals BIP125 replaceability or has an
+	// unconfirmed ancestor signaling BIP125 replaceability. May be unknown
+	// for unconfirmed transactions not in the mempool because their
+	// unconfirmed ancestors are unknown.
+	// Valid values: 'yes', 'no', 'unknown'
+	BIP125Replaceable string `json:"bip125-replaceable"`
 }
 
 type ScanningOrFalse struct {
