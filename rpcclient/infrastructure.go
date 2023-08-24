@@ -1033,6 +1033,9 @@ func (c *Client) SendCmd(cmd interface{}) chan *Response {
 		return newFutureError(err)
 	}
 
+	log.Debugf("%s/%d: sending marshalled JSON: %s",
+		method, id, string(marshalledJSON))
+
 	// Generate the request and send it along with a channel to respond on.
 	responseChan := make(chan *Response, 1)
 	jReq := &jsonRequest{
