@@ -21,14 +21,16 @@ import (
 func TestWalletSvrWsCmds(t *testing.T) {
 	t.Parallel()
 
-	testID := int(1)
-	tests := []struct {
+	type test struct {
 		name         string
 		newCmd       func() (interface{}, error)
 		staticCmd    func() interface{}
 		marshalled   string
 		unmarshalled interface{}
-	}{
+	}
+
+	testID := int(1)
+	tests := []test{
 		{
 			name: "createencryptedwallet",
 			newCmd: func() (interface{}, error) {
@@ -227,69 +229,64 @@ func TestWalletSvrWsCmds(t *testing.T) {
 		},
 	}
 
-	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
-		// Marshal the command as created by the new static command
-		// creation function.
-		marshalled, err := btcjson.MarshalCmd(btcjson.RpcVersion1, testID, test.staticCmd())
-		if err != nil {
-			t.Errorf("MarshalCmd #%d (%s) unexpected error: %v", i,
-				test.name, err)
-			continue
-		}
+		t.Run(test.name, func(t *testing.T) {
 
-		if !bytes.Equal(marshalled, []byte(test.marshalled)) {
-			t.Errorf("Test #%d (%s) unexpected marshalled data - "+
-				"got %s, want %s", i, test.name, marshalled,
-				test.marshalled)
-			continue
-		}
+			// Marshal the command as created by the new static command
+			// creation function.
+			marshalled, err := btcjson.MarshalCmd(btcjson.RpcVersion1, testID, test.staticCmd())
+			if err != nil {
+				t.Fatalf("MarshalCmd #%d (%s) unexpected error: %v", i,
+					test.name, err)
+			}
 
-		// Ensure the command is created without error via the generic
-		// new command creation function.
-		cmd, err := test.newCmd()
-		if err != nil {
-			t.Errorf("Test #%d (%s) unexpected NewCmd error: %v ",
-				i, test.name, err)
-		}
+			if !bytes.Equal(marshalled, []byte(test.marshalled)) {
+				t.Fatalf("Test #%d (%s) unexpected marshalled data - "+
+					"got %s, want %s", i, test.name, marshalled,
+					test.marshalled)
+			}
 
-		// Marshal the command as created by the generic new command
-		// creation function.
-		marshalled, err = btcjson.MarshalCmd(btcjson.RpcVersion1, testID, cmd)
-		if err != nil {
-			t.Errorf("MarshalCmd #%d (%s) unexpected error: %v", i,
-				test.name, err)
-			continue
-		}
+			// Ensure the command is created without error via the generic
+			// new command creation function.
+			cmd, err := test.newCmd()
+			if err != nil {
+				t.Fatalf("Test #%d (%s) unexpected NewCmd error: %v ",
+					i, test.name, err)
+			}
 
-		if !bytes.Equal(marshalled, []byte(test.marshalled)) {
-			t.Errorf("Test #%d (%s) unexpected marshalled data - "+
-				"got %s, want %s", i, test.name, marshalled,
-				test.marshalled)
-			continue
-		}
+			// Marshal the command as created by the generic new command
+			// creation function.
+			marshalled, err = btcjson.MarshalCmd(btcjson.RpcVersion1, testID, cmd)
+			if err != nil {
+				t.Fatalf("MarshalCmd #%d (%s) unexpected error: %v", i,
+					test.name, err)
+			}
 
-		var request btcjson.Request
-		if err := json.Unmarshal(marshalled, &request); err != nil {
-			t.Errorf("Test #%d (%s) unexpected error while "+
-				"unmarshalling JSON-RPC request: %v", i,
-				test.name, err)
-			continue
-		}
+			if !bytes.Equal(marshalled, []byte(test.marshalled)) {
+				t.Fatalf("Test #%d (%s) unexpected marshalled data - "+
+					"got %s, want %s", i, test.name, marshalled,
+					test.marshalled)
+			}
 
-		cmd, err = btcjson.UnmarshalCmd(&request)
-		if err != nil {
-			t.Errorf("UnmarshalCmd #%d (%s) unexpected error: %v", i,
-				test.name, err)
-			continue
-		}
+			var request btcjson.Request
+			if err := json.Unmarshal(marshalled, &request); err != nil {
+				t.Fatalf("Test #%d (%s) unexpected error while "+
+					"unmarshalling JSON-RPC request: %v", i,
+					test.name, err)
+			}
 
-		if !reflect.DeepEqual(cmd, test.unmarshalled) {
-			t.Errorf("Test #%d (%s) unexpected unmarshalled command "+
-				"- got %s, want %s", i, test.name,
-				fmt.Sprintf("(%T) %+[1]v", cmd),
-				fmt.Sprintf("(%T) %+[1]v\n", test.unmarshalled))
-			continue
-		}
+			cmd, err = btcjson.UnmarshalCmd(&request)
+			if err != nil {
+				t.Fatalf("UnmarshalCmd #%d (%s) unexpected error: %v", i,
+					test.name, err)
+			}
+
+			if !reflect.DeepEqual(cmd, test.unmarshalled) {
+				t.Fatalf("Test #%d (%s) unexpected unmarshalled command "+
+					"- got %s, want %s", i, test.name,
+					fmt.Sprintf("(%T) %+[1]v", cmd),
+					fmt.Sprintf("(%T) %+[1]v\n", test.unmarshalled))
+			}
+		})
 	}
 }
