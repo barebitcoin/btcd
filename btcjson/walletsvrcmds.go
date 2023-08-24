@@ -583,6 +583,28 @@ func NewMoveCmd(fromAccount, toAccount string, amount float64, minConf *int, com
 	}
 }
 
+// SendCmd defines the send JSON-RPC command.
+type SendCmd struct {
+	// Can be one of:
+	//   bitcoin address -> BTC amount
+	//   'data'	-> hex encoded OP_RETURN data
+	Outputs      map[string]interface{} `json:"outputs"`
+	ConfTarget   *int                   `json:"conf_target"`
+	EstimateMode *EstimateSmartFeeMode  `json:"estimate_mode"`
+
+	// sat/vB
+	FeeRate *float64     `json:"fee_rate" jsonrpcdefault:"0"`
+	Options *SendOptions `json:"options"`
+}
+
+type SendOptions struct {
+	// When false, returns a serialized transaction which will not be added to the wallet or broadcast
+	AddToWallet *bool `json:"add_to_wallet,omitempty"`
+
+	// Always return a PSBT. Implies AddToWallet = false.
+	PSBT *bool `json:"psbt,omitempty"`
+}
+
 // SendFromCmd defines the sendfrom JSON-RPC command.
 type SendFromCmd struct {
 	FromAccount string
@@ -1129,6 +1151,7 @@ func init() {
 	MustRegisterCmd("loadwallet", (*LoadWalletCmd)(nil), flags)
 	MustRegisterCmd("lockunspent", (*LockUnspentCmd)(nil), flags)
 	MustRegisterCmd("move", (*MoveCmd)(nil), flags)
+	MustRegisterCmd("send", (*SendCmd)(nil), flags)
 	MustRegisterCmd("sendfrom", (*SendFromCmd)(nil), flags)
 	MustRegisterCmd("sendmany", (*SendManyCmd)(nil), flags)
 	MustRegisterCmd("sendtoaddress", (*SendToAddressCmd)(nil), flags)
