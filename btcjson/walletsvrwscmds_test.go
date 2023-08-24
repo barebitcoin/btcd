@@ -189,6 +189,42 @@ func TestWalletSvrWsCmds(t *testing.T) {
 			marshalled:   `{"jsonrpc":"1.0","method":"walletislocked","params":[],"id":1}`,
 			unmarshalled: &btcjson.WalletIsLockedCmd{},
 		},
+		{
+			name: "send",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("send",
+					map[string]interface{}{
+						"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":         0.1,
+						"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k": 0.0123,
+					},
+					(*int)(nil),
+					(*btcjson.EstimateSmartFeeMode)(nil),
+					(*float64)(nil),
+					&btcjson.SendOptions{PSBT: btcjson.Bool(true)},
+				)
+			},
+			staticCmd: func() interface{} {
+				return &btcjson.SendCmd{
+					Options: &btcjson.SendOptions{
+						PSBT: btcjson.Bool(true),
+					},
+					Outputs: map[string]interface{}{
+						"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":         0.1,
+						"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k": 0.0123,
+					},
+				}
+			},
+			marshalled: `{"jsonrpc":"1.0","method":"send","params":[{"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":0.1,"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k":0.0123},null,null,null,{"psbt":true}],"id":1}`,
+			unmarshalled: &btcjson.SendCmd{
+				Options: &btcjson.SendOptions{
+					PSBT: btcjson.Bool(true),
+				},
+				Outputs: map[string]interface{}{
+					"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":         0.1,
+					"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k": 0.0123,
+				},
+			},
+		},
 	}
 
 	t.Logf("Running %d tests", len(tests))

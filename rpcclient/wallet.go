@@ -509,6 +509,69 @@ func (c *Client) SetTxFee(fee btcutil.Amount) error {
 	return c.SetTxFeeAsync(fee).Receive()
 }
 
+// FutureSendResult is a future promise to deliver the result of a
+// SendAsync RPC invocation (or an applicable error).
+type FutureSendResult chan *Response
+
+func (r FutureSendResult) Receive() (*btcjson.SendResult, error) {
+	res, err := ReceiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var out btcjson.SendResult
+	if err := json.Unmarshal(res, &out); err != nil {
+		return nil, err
+	}
+
+	return &out, nil
+}
+
+// WalletSend sends a transaction. This corresponds to the `send`
+// Bitcoin Core RPC. This function is not named Send, because that
+// collides with another exported symbol in this package.
+//
+// NOTE: This function requires to the wallet to be unlocked.  See the
+// WalletPassphrase function for more details.
+func (c *Client) WalletSend(
+	outputs map[btcutil.Address]btcutil.Amount, opts ...WalletSendOpt,
+) (*btcjson.SendResult, error) {
+	return c.WalletSendAsync(outputs, opts...).Receive()
+}
+
+// SendAsync returns an instance of a type that can be used to
+// get the result of the RPC at some future time by invoking the Receive
+// function on the returned instance.
+//
+// See Send for the blocking version and more details.
+func (c *Client) WalletSendAsync(
+	outputs map[btcutil.Address]btcutil.Amount, opts ...WalletSendOpt,
+) FutureSendResult {
+
+	mode := btcjson.EstimateModeUnset
+	cmd := &btcjson.SendCmd{
+		Outputs:      make(map[string]interface{}),
+		EstimateMode: &mode,
+	}
+	for addr, amount := range outputs {
+		cmd.Outputs[addr.EncodeAddress()] = amount.ToBTC()
+	}
+
+	for _, fn := range opts {
+		fn(cmd)
+	}
+
+	return c.SendCmd(cmd)
+}
+
+type WalletSendOpt func(*btcjson.SendCmd)
+
+func WithWalletSendConfirmationTarget(target int) WalletSendOpt {
+	return func(cmd *btcjson.SendCmd) {
+		cmd.ConfTarget = &target
+	}
+}
+
 // FutureSendToAddressResult is a future promise to deliver the result of a
 // SendToAddressAsync RPC invocation (or an applicable error).
 type FutureSendToAddressResult chan *Response

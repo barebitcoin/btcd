@@ -396,3 +396,18 @@ type WalletProcessPsbtResult struct {
 	Psbt     string `json:"psbt"`
 	Complete bool   `json:"complete"`
 }
+
+type SendResult struct {
+	// If the transaction has a complete set of signatures.
+	Complete bool `json:"complete"`
+	// The transaction id for the send.
+	TxID string `json:"txid"`
+
+	// If add_to_wallet is false, the hex-encoded raw transaction
+	// with signature(s)
+	Hex string `json:"hex"`
+
+	// If more signatures are needed, or if add_to_wallet
+	// is false, the base64-encoded (partially) signed transaction
+	PSBT string `json:"psbt"`
+}
