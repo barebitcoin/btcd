@@ -603,6 +603,8 @@ type SendOptions struct {
 
 	// Always return a PSBT. Implies AddToWallet = false.
 	PSBT *bool `json:"psbt,omitempty"`
+
+	IncludeUnsafe *bool `json:"include_unsafe,omitempty"`
 }
 
 // SendFromCmd defines the sendfrom JSON-RPC command.
