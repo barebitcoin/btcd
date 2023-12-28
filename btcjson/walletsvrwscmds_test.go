@@ -249,6 +249,51 @@ func TestWalletSvrWsCmds(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "send subtract_fee_from_outputs",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("send",
+					[]btcjson.SendDestination{
+						{
+
+							Address: "12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA",
+							Amount:  btcutil.Amount(1000_0000),
+						},
+					},
+					(*int)(nil),
+					(*btcjson.EstimateSmartFeeMode)(nil),
+					(*float64)(nil),
+					&btcjson.SendOptions{SubtractFeeFromOutputs: []int{0}},
+				)
+			},
+			staticCmd: func() interface{} {
+				return &btcjson.SendCmd{
+					Options: &btcjson.SendOptions{
+						SubtractFeeFromOutputs: []int{0},
+					},
+					Outputs: []btcjson.SendDestination{
+						{
+
+							Address: "12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA",
+							Amount:  btcutil.Amount(1000_0000),
+						},
+					},
+				}
+			},
+			marshalled: `{"jsonrpc":"1.0","method":"send","params":[[{"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":0.1}],null,null,null,{"subtract_fee_from_outputs":[0]}],"id":1}`,
+			unmarshalled: &btcjson.SendCmd{
+				Options: &btcjson.SendOptions{
+					SubtractFeeFromOutputs: []int{0},
+				},
+				Outputs: []btcjson.SendDestination{
+					{
+
+						Address: "12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA",
+						Amount:  btcutil.Amount(1000_0000),
+					},
+				},
+			},
+		},
 	}
 
 	for i, test := range tests {

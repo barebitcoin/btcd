@@ -593,6 +593,16 @@ func WithWalletSendIncludeUnsafe() WalletSendOpt {
 	}
 }
 
+func WithWalletSendSubtractFeeFromOutputs(outputs []int) WalletSendOpt {
+	return func(cmd *btcjson.SendCmd) {
+		if cmd.Options == nil {
+			cmd.Options = &btcjson.SendOptions{}
+		}
+
+		cmd.Options.SubtractFeeFromOutputs = outputs
+	}
+}
+
 // FutureSendToAddressResult is a future promise to deliver the result of a
 // SendToAddressAsync RPC invocation (or an applicable error).
 type FutureSendToAddressResult chan *Response
