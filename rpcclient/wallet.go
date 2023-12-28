@@ -534,7 +534,7 @@ func (r FutureSendResult) Receive() (*btcjson.SendResult, error) {
 // NOTE: This function requires to the wallet to be unlocked.  See the
 // WalletPassphrase function for more details.
 func (c *Client) WalletSend(
-	outputs map[btcutil.Address]btcutil.Amount, opts ...WalletSendOpt,
+	outputs []btcjson.SendDestination, opts ...WalletSendOpt,
 ) (*btcjson.SendResult, error) {
 	return c.WalletSendAsync(outputs, opts...).Receive()
 }
@@ -545,20 +545,31 @@ func (c *Client) WalletSend(
 //
 // See Send for the blocking version and more details.
 func (c *Client) WalletSendAsync(
-	outputs map[btcutil.Address]btcutil.Amount, opts ...WalletSendOpt,
+	outputs []btcjson.SendDestination, opts ...WalletSendOpt,
 ) FutureSendResult {
 
 	mode := btcjson.EstimateModeUnset
 	cmd := &btcjson.SendCmd{
-		Outputs:      make(map[string]interface{}),
+		Outputs:      outputs,
 		EstimateMode: &mode,
-	}
-	for addr, amount := range outputs {
-		cmd.Outputs[addr.EncodeAddress()] = amount.ToBTC()
 	}
 
 	for _, fn := range opts {
 		fn(cmd)
+	}
+
+	// Sanity check all the outputs
+	for _, out := range outputs {
+		switch {
+		// Sending money
+		case out.Data == nil && (out.Address != "" && out.Amount != 0):
+
+		// Doing an OP_RETURN
+		case len(out.Data) != 0 && (out.Address == "" && out.Amount == 0):
+
+		default:
+			panic("programmer error: must EITHER set data OR address + amount")
+		}
 	}
 
 	return c.SendCmd(cmd)

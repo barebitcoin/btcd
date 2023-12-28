@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 )
 
 // TestWalletSvrWsCmds tests all of the wallet server websocket-specific
@@ -195,9 +196,16 @@ func TestWalletSvrWsCmds(t *testing.T) {
 			name: "send",
 			newCmd: func() (interface{}, error) {
 				return btcjson.NewCmd("send",
-					map[string]interface{}{
-						"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":         0.1,
-						"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k": 0.0123,
+					[]btcjson.SendDestination{
+						{
+
+							Address: "12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA",
+							Amount:  btcutil.Amount(1000_0000),
+						},
+						{
+							Address: "bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k",
+							Amount:  btcutil.Amount(123_0000),
+						},
 					},
 					(*int)(nil),
 					(*btcjson.EstimateSmartFeeMode)(nil),
@@ -210,20 +218,34 @@ func TestWalletSvrWsCmds(t *testing.T) {
 					Options: &btcjson.SendOptions{
 						PSBT: btcjson.Bool(true),
 					},
-					Outputs: map[string]interface{}{
-						"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":         0.1,
-						"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k": 0.0123,
+					Outputs: []btcjson.SendDestination{
+						{
+
+							Address: "12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA",
+							Amount:  btcutil.Amount(1000_0000),
+						},
+						{
+							Address: "bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k",
+							Amount:  btcutil.Amount(123_0000),
+						},
 					},
 				}
 			},
-			marshalled: `{"jsonrpc":"1.0","method":"send","params":[{"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":0.1,"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k":0.0123},null,null,null,{"psbt":true}],"id":1}`,
+			marshalled: `{"jsonrpc":"1.0","method":"send","params":[[{"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":0.1},{"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k":0.0123}],null,null,null,{"psbt":true}],"id":1}`,
 			unmarshalled: &btcjson.SendCmd{
 				Options: &btcjson.SendOptions{
 					PSBT: btcjson.Bool(true),
 				},
-				Outputs: map[string]interface{}{
-					"12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA":         0.1,
-					"bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k": 0.0123,
+				Outputs: []btcjson.SendDestination{
+					{
+
+						Address: "12ocBKfUXpv3coZVowzwJoUx6Zpmb5dRsA",
+						Amount:  btcutil.Amount(1000_0000),
+					},
+					{
+						Address: "bc1qa0wkg67zcumvy0u9hqkaspnwqrnxwyh4gtmy5k",
+						Amount:  btcutil.Amount(123_0000),
+					},
 				},
 			},
 		},

@@ -583,14 +583,77 @@ func NewMoveCmd(fromAccount, toAccount string, amount float64, minConf *int, com
 	}
 }
 
+var (
+	_ json.Marshaler   = new(SendDestination)
+	_ json.Unmarshaler = new(SendDestination)
+)
+
+// SendDestination represents an output argument passed to the 'send' RPC.
+// Either address AND amount must be set, OR only data.
+type SendDestination struct {
+	Address string
+	Amount  btcutil.Amount
+
+	Data []byte
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (s *SendDestination) UnmarshalJSON(data []byte) error {
+	var unmarshaledMap map[string]interface{}
+	if err := json.Unmarshal(data, &unmarshaledMap); err != nil {
+		return err
+	}
+
+	if len(unmarshaledMap) != 1 {
+		return fmt.Errorf("object did not contain single key: %s", string(data))
+	}
+
+	if data, ok := unmarshaledMap["data"]; ok {
+		decoded, err := hex.DecodeString(data.(string))
+		if err != nil {
+			return err
+		}
+
+		*s = SendDestination{
+			Data: decoded,
+		}
+		return nil
+	}
+
+	for address, amount := range unmarshaledMap {
+		btc, err := btcutil.NewAmount(amount.(float64))
+		if err != nil {
+			return err
+		}
+
+		*s = SendDestination{
+			Address: address,
+			Amount:  btc,
+		}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements json.Marshaler.
+func (s *SendDestination) MarshalJSON() ([]byte, error) {
+	if s.Data != nil {
+		return json.Marshal(map[string]string{
+			"data": hex.EncodeToString(s.Data),
+		})
+	}
+
+	return json.Marshal(map[string]float64{
+		s.Address: s.Amount.ToBTC(),
+	})
+
+}
+
 // SendCmd defines the send JSON-RPC command.
 type SendCmd struct {
-	// Can be one of:
-	//   bitcoin address -> BTC amount
-	//   'data'	-> hex encoded OP_RETURN data
-	Outputs      map[string]interface{} `json:"outputs"`
-	ConfTarget   *int                   `json:"conf_target"`
-	EstimateMode *EstimateSmartFeeMode  `json:"estimate_mode"`
+	Outputs      []SendDestination     `json:"outputs"`
+	ConfTarget   *int                  `json:"conf_target"`
+	EstimateMode *EstimateSmartFeeMode `json:"estimate_mode"`
 
 	// sat/vB
 	FeeRate *float64     `json:"fee_rate" jsonrpcdefault:"0"`
