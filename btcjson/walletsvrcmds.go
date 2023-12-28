@@ -668,6 +668,8 @@ type SendOptions struct {
 	PSBT *bool `json:"psbt,omitempty"`
 
 	IncludeUnsafe *bool `json:"include_unsafe,omitempty"`
+
+	SubtractFeeFromOutputs []int `json:"subtract_fee_from_outputs,omitempty"`
 }
 
 // SendFromCmd defines the sendfrom JSON-RPC command.
