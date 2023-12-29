@@ -552,6 +552,7 @@ func (c *Client) WalletSendAsync(
 	cmd := &btcjson.SendCmd{
 		Outputs:      outputs,
 		EstimateMode: &mode,
+		Options:      &btcjson.SendOptions{},
 	}
 
 	for _, fn := range opts {
@@ -577,6 +578,15 @@ func (c *Client) WalletSendAsync(
 
 type WalletSendOpt func(*btcjson.SendCmd)
 
+func WithWalletSendAddToWallet(add bool) WalletSendOpt {
+	return func(sc *btcjson.SendCmd) { sc.Options.AddToWallet = &add }
+}
+
+// Specify a fee rate in sat/vB.
+func WithWalletSendFeeRate(rate float64) WalletSendOpt {
+	return func(sc *btcjson.SendCmd) { sc.FeeRate = &rate }
+}
+
 func WithWalletSendConfirmationTarget(target int) WalletSendOpt {
 	return func(cmd *btcjson.SendCmd) {
 		cmd.ConfTarget = &target
@@ -585,20 +595,12 @@ func WithWalletSendConfirmationTarget(target int) WalletSendOpt {
 
 func WithWalletSendIncludeUnsafe() WalletSendOpt {
 	return func(cmd *btcjson.SendCmd) {
-		if cmd.Options == nil {
-			cmd.Options = &btcjson.SendOptions{}
-		}
-
 		cmd.Options.IncludeUnsafe = btcjson.Bool(true)
 	}
 }
 
 func WithWalletSendSubtractFeeFromOutputs(outputs []int) WalletSendOpt {
 	return func(cmd *btcjson.SendCmd) {
-		if cmd.Options == nil {
-			cmd.Options = &btcjson.SendOptions{}
-		}
-
 		cmd.Options.SubtractFeeFromOutputs = outputs
 	}
 }
