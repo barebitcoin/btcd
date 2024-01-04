@@ -115,16 +115,19 @@ func NewEncryptWalletCmd(passphrase string) *EncryptWalletCmd {
 // for the estimatesmartfee JSON-RPC command.
 type EstimateSmartFeeMode string
 
+// TEMP: in the `send` RPC, Core claims to support these case insensitively.
+// this is actually not the case, and we get an error if passing 'UNSET'.
+
 var (
-	EstimateModeUnset        EstimateSmartFeeMode = "UNSET"
-	EstimateModeEconomical   EstimateSmartFeeMode = "ECONOMICAL"
-	EstimateModeConservative EstimateSmartFeeMode = "CONSERVATIVE"
+	EstimateModeUnset        EstimateSmartFeeMode = "unset"
+	EstimateModeEconomical   EstimateSmartFeeMode = "economical"
+	EstimateModeConservative EstimateSmartFeeMode = "conservative"
 )
 
 // EstimateSmartFeeCmd defines the estimatesmartfee JSON-RPC command.
 type EstimateSmartFeeCmd struct {
 	ConfTarget   int64
-	EstimateMode *EstimateSmartFeeMode `jsonrpcdefault:"\"CONSERVATIVE\""`
+	EstimateMode *EstimateSmartFeeMode `jsonrpcdefault:"\"conservative\""`
 }
 
 // NewEstimateSmartFeeCmd returns a new instance which can be used to issue a

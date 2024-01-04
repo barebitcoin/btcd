@@ -119,7 +119,7 @@ func TestChainSvrCmds(t *testing.T) {
 		{
 			name: "fundrawtransaction - full opts",
 			newCmd: func() (i interface{}, e error) {
-				return btcjson.NewCmd("fundrawtransaction", "deadbeef", `{"changeAddress":"bcrt1qeeuctq9wutlcl5zatge7rjgx0k45228cxez655","changePosition":1,"change_type":"legacy","includeWatching":true,"lockUnspents":true,"feeRate":0.7,"subtractFeeFromOutputs":[0],"replaceable":true,"conf_target":8,"estimate_mode":"ECONOMICAL"}`)
+				return btcjson.NewCmd("fundrawtransaction", "deadbeef", `{"changeAddress":"bcrt1qeeuctq9wutlcl5zatge7rjgx0k45228cxez655","changePosition":1,"change_type":"legacy","includeWatching":true,"lockUnspents":true,"feeRate":0.7,"subtractFeeFromOutputs":[0],"replaceable":true,"conf_target":8,"estimate_mode":"economical"}`)
 			},
 			staticCmd: func() interface{} {
 				deadbeef, err := hex.DecodeString("deadbeef")
@@ -148,7 +148,7 @@ func TestChainSvrCmds(t *testing.T) {
 					EstimateMode:           &btcjson.EstimateModeEconomical,
 				}, nil)
 			},
-			marshalled: `{"jsonrpc":"1.0","method":"fundrawtransaction","params":["deadbeef",{"changeAddress":"bcrt1qeeuctq9wutlcl5zatge7rjgx0k45228cxez655","changePosition":1,"change_type":"legacy","includeWatching":true,"lockUnspents":true,"feeRate":0.7,"subtractFeeFromOutputs":[0],"replaceable":true,"conf_target":8,"estimate_mode":"ECONOMICAL"}],"id":1}`,
+			marshalled: `{"jsonrpc":"1.0","method":"fundrawtransaction","params":["deadbeef",{"changeAddress":"bcrt1qeeuctq9wutlcl5zatge7rjgx0k45228cxez655","changePosition":1,"change_type":"legacy","includeWatching":true,"lockUnspents":true,"feeRate":0.7,"subtractFeeFromOutputs":[0],"replaceable":true,"conf_target":8,"estimate_mode":"economical"}],"id":1}`,
 			unmarshalled: func() interface{} {
 				changeAddress := "bcrt1qeeuctq9wutlcl5zatge7rjgx0k45228cxez655"
 				change := 1
