@@ -249,7 +249,7 @@ func TestWalletSvrCmds(t *testing.T) {
 			staticCmd: func() interface{} {
 				return btcjson.NewEstimateSmartFeeCmd(6, &btcjson.EstimateModeEconomical)
 			},
-			marshalled: `{"jsonrpc":"1.0","method":"estimatesmartfee","params":[6,"ECONOMICAL"],"id":1}`,
+			marshalled: `{"jsonrpc":"1.0","method":"estimatesmartfee","params":[6,"economical"],"id":1}`,
 			unmarshalled: &btcjson.EstimateSmartFeeCmd{
 				ConfTarget:   6,
 				EstimateMode: &btcjson.EstimateModeEconomical,
