@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"github.com/btcsuite/btcd/integration/rpctest"
 	"github.com/stretchr/testify/require"
 )
+
+var ctx = context.Background()
 
 func getBlockFromString(t *testing.T, hexStr string) *btcutil.Block {
 	t.Helper()
@@ -155,7 +158,7 @@ func TestGetChainTips(t *testing.T) {
 	defer r.TearDown()
 
 	// Immediately call getchaintips after setting up regtest.
-	gotChainTips, err := r.Client.GetChainTips()
+	gotChainTips, err := r.Client.GetChainTips(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,13 +183,13 @@ func TestGetChainTips(t *testing.T) {
 	blockStrings := []string{block1Hex, block2Hex, block3Hex, block4Hex}
 	for _, blockString := range blockStrings {
 		block := getBlockFromString(t, blockString)
-		err = r.Client.SubmitBlock(block, nil)
+		err = r.Client.SubmitBlock(ctx, block, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	gotChainTips, err = r.Client.GetChainTips()
+	gotChainTips, err = r.Client.GetChainTips(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,13 +214,13 @@ func TestGetChainTips(t *testing.T) {
 	blockStrings = []string{block2aHex, block3aHex}
 	for _, blockString := range blockStrings {
 		block := getBlockFromString(t, blockString)
-		err = r.Client.SubmitBlock(block, nil)
+		err = r.Client.SubmitBlock(ctx, block, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	gotChainTips, err = r.Client.GetChainTips()
+	gotChainTips, err = r.Client.GetChainTips(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,12 +249,12 @@ func TestGetChainTips(t *testing.T) {
 	// (genesis block) -> 1 -> 2  -> 3  -> 4   (active)
 	//                    \ -> 2a -> 3a -> 4a  (valid-fork)
 	block := getBlockFromString(t, block4aHex)
-	err = r.Client.SubmitBlock(block, nil)
+	err = r.Client.SubmitBlock(ctx, block, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	gotChainTips, err = r.Client.GetChainTips()
+	gotChainTips, err = r.Client.GetChainTips(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,11 +283,11 @@ func TestGetChainTips(t *testing.T) {
 	// (genesis block) -> 1 -> 2  -> 3  -> 4         (valid-fork)
 	//                    \ -> 2a -> 3a -> 4a -> 5a  (active)
 	block = getBlockFromString(t, block5aHex)
-	err = r.Client.SubmitBlock(block, nil)
+	err = r.Client.SubmitBlock(ctx, block, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gotChainTips, err = r.Client.GetChainTips()
+	gotChainTips, err = r.Client.GetChainTips(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,11 +317,11 @@ func TestGetChainTips(t *testing.T) {
 	//                    \ -> 2a -> 3a -> 4a -> 5a  (active)
 	//                                \ -> 4b        (valid-fork)
 	block = getBlockFromString(t, block4bHex)
-	err = r.Client.SubmitBlock(block, nil)
+	err = r.Client.SubmitBlock(ctx, block, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gotChainTips, err = r.Client.GetChainTips()
+	gotChainTips, err = r.Client.GetChainTips(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

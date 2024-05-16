@@ -2,13 +2,14 @@ package rpcclient
 
 import (
 	"errors"
-	"github.com/gorilla/websocket"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -150,7 +151,7 @@ func TestClientConnectedToWSServerRunner(t *testing.T) {
 			TestCase: func(t *testing.T) {
 				client, serverReceivedChannel, cleanup := makeClient(t)
 				defer cleanup()
-				client.GetChainTxStatsAsync()
+				client.GetChainTxStatsAsync(ctx)
 
 				message := <-serverReceivedChannel
 				if message != "{\"jsonrpc\":\"1.0\",\"method\":\"getchaintxstats\",\"params\":[],\"id\":1}" {
@@ -167,7 +168,7 @@ func TestClientConnectedToWSServerRunner(t *testing.T) {
 				// a bit of a hack here: since there are multiple places where we read
 				// from the shutdown channel, and it is not buffered, ensure that a shutdown
 				// message is sent every time it is read from, this will ensure that
-				// when client.GetChainTxStatsAsync() gets called, it hits the non-blocking
+				// when client.GetChainTxStatsAsync(ctx) gets called, it hits the non-blocking
 				// read from the shutdown channel
 				go func() {
 					type shutdownMessage struct{}
@@ -179,7 +180,7 @@ func TestClientConnectedToWSServerRunner(t *testing.T) {
 				var response *Response = nil
 
 				for response == nil {
-					respChan := client.GetChainTxStatsAsync()
+					respChan := client.GetChainTxStatsAsync(ctx)
 					select {
 					case response = <-respChan:
 					default:
@@ -196,7 +197,7 @@ func TestClientConnectedToWSServerRunner(t *testing.T) {
 			TestCase: func(t *testing.T) {
 				client, serverReceivedChannel, cleanup := makeClient(t)
 				defer cleanup()
-				ch := client.GetBestBlockHashAsync()
+				ch := client.GetBestBlockHashAsync(ctx)
 
 				message := <-serverReceivedChannel
 				if message != "{\"jsonrpc\":\"1.0\",\"method\":\"getbestblockhash\",\"params\":[],\"id\":1}" {
@@ -265,7 +266,7 @@ func makeClient(t *testing.T) (*Client, chan string, func()) {
 		Host:       url,
 	}
 
-	client, err := New(&config, nil)
+	client, err := New(ctx, &config, nil)
 	if err != nil {
 		t.Fatalf("error when creating new client %s", err.Error())
 	}

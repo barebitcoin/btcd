@@ -5,6 +5,7 @@
 package rpcclient
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -51,14 +52,14 @@ func (r FutureGenerateResult) Receive() ([]*chainhash.Hash, error) {
 // the returned instance.
 //
 // See Generate for the blocking version and more details.
-func (c *Client) GenerateAsync(numBlocks uint32) FutureGenerateResult {
+func (c *Client) GenerateAsync(ctx context.Context, numBlocks uint32) FutureGenerateResult {
 	cmd := btcjson.NewGenerateCmd(numBlocks)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // Generate generates numBlocks blocks and returns their hashes.
-func (c *Client) Generate(numBlocks uint32) ([]*chainhash.Hash, error) {
-	return c.GenerateAsync(numBlocks).Receive()
+func (c *Client) Generate(ctx context.Context, numBlocks uint32) ([]*chainhash.Hash, error) {
+	return c.GenerateAsync(ctx, numBlocks).Receive()
 }
 
 // FutureGenerateToAddressResult is a future promise to deliver the result of a
@@ -98,14 +99,14 @@ func (f FutureGenerateToAddressResult) Receive() ([]*chainhash.Hash, error) {
 // the returned instance.
 //
 // See GenerateToAddress for the blocking version and more details.
-func (c *Client) GenerateToAddressAsync(numBlocks int64, address btcutil.Address, maxTries *int64) FutureGenerateToAddressResult {
+func (c *Client) GenerateToAddressAsync(ctx context.Context, numBlocks int64, address btcutil.Address, maxTries *int64) FutureGenerateToAddressResult {
 	cmd := btcjson.NewGenerateToAddressCmd(numBlocks, address.EncodeAddress(), maxTries)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GenerateToAddress generates numBlocks blocks to the given address and returns their hashes.
-func (c *Client) GenerateToAddress(numBlocks int64, address btcutil.Address, maxTries *int64) ([]*chainhash.Hash, error) {
-	return c.GenerateToAddressAsync(numBlocks, address, maxTries).Receive()
+func (c *Client) GenerateToAddress(ctx context.Context, numBlocks int64, address btcutil.Address, maxTries *int64) ([]*chainhash.Hash, error) {
+	return c.GenerateToAddressAsync(ctx, numBlocks, address, maxTries).Receive()
 }
 
 // FutureGetGenerateResult is a future promise to deliver the result of a
@@ -135,14 +136,14 @@ func (r FutureGetGenerateResult) Receive() (bool, error) {
 // the returned instance.
 //
 // See GetGenerate for the blocking version and more details.
-func (c *Client) GetGenerateAsync() FutureGetGenerateResult {
+func (c *Client) GetGenerateAsync(ctx context.Context) FutureGetGenerateResult {
 	cmd := btcjson.NewGetGenerateCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetGenerate returns true if the server is set to mine, otherwise false.
-func (c *Client) GetGenerate() (bool, error) {
-	return c.GetGenerateAsync().Receive()
+func (c *Client) GetGenerate(ctx context.Context) (bool, error) {
+	return c.GetGenerateAsync(ctx).Receive()
 }
 
 // FutureSetGenerateResult is a future promise to deliver the result of a
@@ -161,14 +162,14 @@ func (r FutureSetGenerateResult) Receive() error {
 // returned instance.
 //
 // See SetGenerate for the blocking version and more details.
-func (c *Client) SetGenerateAsync(enable bool, numCPUs int) FutureSetGenerateResult {
+func (c *Client) SetGenerateAsync(ctx context.Context, enable bool, numCPUs int) FutureSetGenerateResult {
 	cmd := btcjson.NewSetGenerateCmd(enable, &numCPUs)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // SetGenerate sets the server to generate coins (mine) or not.
-func (c *Client) SetGenerate(enable bool, numCPUs int) error {
-	return c.SetGenerateAsync(enable, numCPUs).Receive()
+func (c *Client) SetGenerate(ctx context.Context, enable bool, numCPUs int) error {
+	return c.SetGenerateAsync(ctx, enable, numCPUs).Receive()
 }
 
 // FutureGetHashesPerSecResult is a future promise to deliver the result of a
@@ -199,16 +200,16 @@ func (r FutureGetHashesPerSecResult) Receive() (int64, error) {
 // the returned instance.
 //
 // See GetHashesPerSec for the blocking version and more details.
-func (c *Client) GetHashesPerSecAsync() FutureGetHashesPerSecResult {
+func (c *Client) GetHashesPerSecAsync(ctx context.Context) FutureGetHashesPerSecResult {
 	cmd := btcjson.NewGetHashesPerSecCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetHashesPerSec returns a recent hashes per second performance measurement
 // while generating coins (mining).  Zero is returned if the server is not
 // mining.
-func (c *Client) GetHashesPerSec() (int64, error) {
-	return c.GetHashesPerSecAsync().Receive()
+func (c *Client) GetHashesPerSec(ctx context.Context) (int64, error) {
+	return c.GetHashesPerSecAsync(ctx).Receive()
 }
 
 // FutureGetMiningInfoResult is a future promise to deliver the result of a
@@ -238,14 +239,14 @@ func (r FutureGetMiningInfoResult) Receive() (*btcjson.GetMiningInfoResult, erro
 // the returned instance.
 //
 // See GetMiningInfo for the blocking version and more details.
-func (c *Client) GetMiningInfoAsync() FutureGetMiningInfoResult {
+func (c *Client) GetMiningInfoAsync(ctx context.Context) FutureGetMiningInfoResult {
 	cmd := btcjson.NewGetMiningInfoCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetMiningInfo returns mining information.
-func (c *Client) GetMiningInfo() (*btcjson.GetMiningInfoResult, error) {
-	return c.GetMiningInfoAsync().Receive()
+func (c *Client) GetMiningInfo(ctx context.Context) (*btcjson.GetMiningInfoResult, error) {
+	return c.GetMiningInfoAsync(ctx).Receive()
 }
 
 // FutureGetNetworkHashPS is a future promise to deliver the result of a
@@ -276,9 +277,9 @@ func (r FutureGetNetworkHashPS) Receive() (float64, error) {
 // the returned instance.
 //
 // See GetNetworkHashPS for the blocking version and more details.
-func (c *Client) GetNetworkHashPSAsync() FutureGetNetworkHashPS {
+func (c *Client) GetNetworkHashPSAsync(ctx context.Context) FutureGetNetworkHashPS {
 	cmd := btcjson.NewGetNetworkHashPSCmd(nil, nil)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetNetworkHashPS returns the estimated network hashes per second using the
@@ -286,8 +287,8 @@ func (c *Client) GetNetworkHashPSAsync() FutureGetNetworkHashPS {
 //
 // See GetNetworkHashPS2 to override the number of blocks to use and
 // GetNetworkHashPS3 to override the height at which to calculate the estimate.
-func (c *Client) GetNetworkHashPS() (float64, error) {
-	return c.GetNetworkHashPSAsync().Receive()
+func (c *Client) GetNetworkHashPS(ctx context.Context) (float64, error) {
+	return c.GetNetworkHashPSAsync(ctx).Receive()
 }
 
 // GetNetworkHashPS2Async returns an instance of a type that can be used to get
@@ -295,9 +296,9 @@ func (c *Client) GetNetworkHashPS() (float64, error) {
 // the returned instance.
 //
 // See GetNetworkHashPS2 for the blocking version and more details.
-func (c *Client) GetNetworkHashPS2Async(blocks int) FutureGetNetworkHashPS {
+func (c *Client) GetNetworkHashPS2Async(ctx context.Context, blocks int) FutureGetNetworkHashPS {
 	cmd := btcjson.NewGetNetworkHashPSCmd(&blocks, nil)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetNetworkHashPS2 returns the estimated network hashes per second for the
@@ -307,8 +308,8 @@ func (c *Client) GetNetworkHashPS2Async(blocks int) FutureGetNetworkHashPS {
 //
 // See GetNetworkHashPS to use defaults and GetNetworkHashPS3 to override the
 // height at which to calculate the estimate.
-func (c *Client) GetNetworkHashPS2(blocks int) (float64, error) {
-	return c.GetNetworkHashPS2Async(blocks).Receive()
+func (c *Client) GetNetworkHashPS2(ctx context.Context, blocks int) (float64, error) {
+	return c.GetNetworkHashPS2Async(ctx, blocks).Receive()
 }
 
 // GetNetworkHashPS3Async returns an instance of a type that can be used to get
@@ -316,9 +317,9 @@ func (c *Client) GetNetworkHashPS2(blocks int) (float64, error) {
 // the returned instance.
 //
 // See GetNetworkHashPS3 for the blocking version and more details.
-func (c *Client) GetNetworkHashPS3Async(blocks, height int) FutureGetNetworkHashPS {
+func (c *Client) GetNetworkHashPS3Async(ctx context.Context, blocks, height int) FutureGetNetworkHashPS {
 	cmd := btcjson.NewGetNetworkHashPSCmd(&blocks, &height)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetNetworkHashPS3 returns the estimated network hashes per second for the
@@ -327,8 +328,8 @@ func (c *Client) GetNetworkHashPS3Async(blocks, height int) FutureGetNetworkHash
 // of blocks since the last difficulty change will be used.
 //
 // See GetNetworkHashPS and GetNetworkHashPS2 to use defaults.
-func (c *Client) GetNetworkHashPS3(blocks, height int) (float64, error) {
-	return c.GetNetworkHashPS3Async(blocks, height).Receive()
+func (c *Client) GetNetworkHashPS3(ctx context.Context, blocks, height int) (float64, error) {
+	return c.GetNetworkHashPS3Async(ctx, blocks, height).Receive()
 }
 
 // FutureGetWork is a future promise to deliver the result of a
@@ -358,16 +359,16 @@ func (r FutureGetWork) Receive() (*btcjson.GetWorkResult, error) {
 // returned instance.
 //
 // See GetWork for the blocking version and more details.
-func (c *Client) GetWorkAsync() FutureGetWork {
+func (c *Client) GetWorkAsync(ctx context.Context) FutureGetWork {
 	cmd := btcjson.NewGetWorkCmd(nil)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetWork returns hash data to work on.
 //
 // See GetWorkSubmit to submit the found solution.
-func (c *Client) GetWork() (*btcjson.GetWorkResult, error) {
-	return c.GetWorkAsync().Receive()
+func (c *Client) GetWork(ctx context.Context) (*btcjson.GetWorkResult, error) {
+	return c.GetWorkAsync(ctx).Receive()
 }
 
 // FutureGetWorkSubmit is a future promise to deliver the result of a
@@ -397,17 +398,17 @@ func (r FutureGetWorkSubmit) Receive() (bool, error) {
 // returned instance.
 //
 // See GetWorkSubmit for the blocking version and more details.
-func (c *Client) GetWorkSubmitAsync(data string) FutureGetWorkSubmit {
+func (c *Client) GetWorkSubmitAsync(ctx context.Context, data string) FutureGetWorkSubmit {
 	cmd := btcjson.NewGetWorkCmd(&data)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetWorkSubmit submits a block header which is a solution to previously
 // requested data and returns whether or not the solution was accepted.
 //
 // See GetWork to request data to work on.
-func (c *Client) GetWorkSubmit(data string) (bool, error) {
-	return c.GetWorkSubmitAsync(data).Receive()
+func (c *Client) GetWorkSubmit(ctx context.Context, data string) (bool, error) {
+	return c.GetWorkSubmitAsync(ctx, data).Receive()
 }
 
 // FutureSubmitBlockResult is a future promise to deliver the result of a
@@ -441,7 +442,7 @@ func (r FutureSubmitBlockResult) Receive() error {
 // returned instance.
 //
 // See SubmitBlock for the blocking version and more details.
-func (c *Client) SubmitBlockAsync(block *btcutil.Block, options *btcjson.SubmitBlockOptions) FutureSubmitBlockResult {
+func (c *Client) SubmitBlockAsync(ctx context.Context, block *btcutil.Block, options *btcjson.SubmitBlockOptions) FutureSubmitBlockResult {
 	blockHex := ""
 	if block != nil {
 		blockBytes, err := block.Bytes()
@@ -453,12 +454,12 @@ func (c *Client) SubmitBlockAsync(block *btcutil.Block, options *btcjson.SubmitB
 	}
 
 	cmd := btcjson.NewSubmitBlockCmd(blockHex, options)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // SubmitBlock attempts to submit a new block into the bitcoin network.
-func (c *Client) SubmitBlock(block *btcutil.Block, options *btcjson.SubmitBlockOptions) error {
-	return c.SubmitBlockAsync(block, options).Receive()
+func (c *Client) SubmitBlock(ctx context.Context, block *btcutil.Block, options *btcjson.SubmitBlockOptions) error {
+	return c.SubmitBlockAsync(ctx, block, options).Receive()
 }
 
 // FutureGetBlockTemplateResponse is a future promise to deliver the result of a
@@ -488,12 +489,12 @@ func (r FutureGetBlockTemplateResponse) Receive() (*btcjson.GetBlockTemplateResu
 // returned instance.
 //
 // See GetBlockTemplate for the blocking version and more details.
-func (c *Client) GetBlockTemplateAsync(req *btcjson.TemplateRequest) FutureGetBlockTemplateResponse {
+func (c *Client) GetBlockTemplateAsync(ctx context.Context, req *btcjson.TemplateRequest) FutureGetBlockTemplateResponse {
 	cmd := btcjson.NewGetBlockTemplateCmd(req)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetBlockTemplate returns a new block template for mining.
-func (c *Client) GetBlockTemplate(req *btcjson.TemplateRequest) (*btcjson.GetBlockTemplateResult, error) {
-	return c.GetBlockTemplateAsync(req).Receive()
+func (c *Client) GetBlockTemplate(ctx context.Context, req *btcjson.TemplateRequest) (*btcjson.GetBlockTemplateResult, error) {
+	return c.GetBlockTemplateAsync(ctx, req).Receive()
 }

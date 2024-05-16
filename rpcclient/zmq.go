@@ -1,6 +1,7 @@
 package rpcclient
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/btcsuite/btcd/btcjson"
@@ -29,11 +30,11 @@ func (r FutureGetZmqNotificationsResult) Receive() (btcjson.GetZmqNotificationRe
 // function on the returned instance.
 //
 // See GetZmqNotifications for the blocking version and more details.
-func (c *Client) GetZmqNotificationsAsync() FutureGetZmqNotificationsResult {
-	return c.SendCmd(btcjson.NewGetZmqNotificationsCmd())
+func (c *Client) GetZmqNotificationsAsync(ctx context.Context) FutureGetZmqNotificationsResult {
+	return c.SendCmd(ctx, btcjson.NewGetZmqNotificationsCmd())
 }
 
 // GetZmqNotifications returns information about the active ZeroMQ notifications.
-func (c *Client) GetZmqNotifications() (btcjson.GetZmqNotificationResult, error) {
-	return c.GetZmqNotificationsAsync().Receive()
+func (c *Client) GetZmqNotifications(ctx context.Context) (btcjson.GetZmqNotificationResult, error) {
+	return c.GetZmqNotificationsAsync(ctx).Receive()
 }

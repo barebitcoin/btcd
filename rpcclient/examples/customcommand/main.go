@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 
@@ -62,16 +63,16 @@ func (r FutureNameShowResult) Receive() (*NameShowResult, error) {
 // the returned instance.
 //
 // See NameShow for the blocking version and more details.
-func NameShowAsync(c *rpcclient.Client, name string) FutureNameShowResult {
+func NameShowAsync(ctx context.Context, c *rpcclient.Client, name string) FutureNameShowResult {
 	cmd := &NameShowCmd{
 		Name: name,
 	}
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // NameShow returns detailed information about a name.
-func NameShow(c *rpcclient.Client, name string) (*NameShowResult, error) {
-	return NameShowAsync(c, name).Receive()
+func NameShow(ctx context.Context, c *rpcclient.Client, name string) (*NameShowResult, error) {
+	return NameShowAsync(ctx, c, name).Receive()
 }
 
 func init() {
@@ -82,6 +83,8 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
+
 	// Connect to local namecoin core RPC server using HTTP POST mode.
 	connCfg := &rpcclient.ConnConfig{
 		Host:         "localhost:8336",
@@ -92,14 +95,14 @@ func main() {
 	}
 	// Notice the notification parameter is nil since notifications are
 	// not supported in HTTP POST mode.
-	client, err := rpcclient.New(connCfg, nil)
+	client, err := rpcclient.New(ctx, connCfg, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
 	// Get the current block count.
-	result, err := NameShow(client, "d/namecoin")
+	result, err := NameShow(ctx, client, "d/namecoin")
 	if err != nil {
 		log.Fatal(err)
 	}

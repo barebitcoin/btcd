@@ -7,6 +7,7 @@ package rpcclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -210,7 +211,7 @@ type NotificationHandlers struct {
 // conversions to get the raw notification types into higher level types and
 // delivers the notification to the appropriate On<X> handler registered with
 // the client.
-func (c *Client) handleNotification(ntfn *rawNotification) {
+func (c *Client) handleNotification(ctx context.Context, ntfn *rawNotification) {
 	// Ignore the notification if the client is not interested in any
 	// notifications.
 	if c.ntfnHandlers == nil {
@@ -228,7 +229,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		blockHash, blockHeight, blockTime, err := parseChainNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid block connected "+
+			log(ctx).Warnf("Received invalid block connected "+
 				"notification: %v", err)
 			return
 		}
@@ -246,7 +247,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 		blockHeight, blockHeader, transactions, err :=
 			parseFilteredBlockConnectedParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid filtered block "+
+			log(ctx).Warnf("Received invalid filtered block "+
 				"connected notification: %v", err)
 			return
 		}
@@ -264,7 +265,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		blockHash, blockHeight, blockTime, err := parseChainNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid block connected "+
+			log(ctx).Warnf("Received invalid block connected "+
 				"notification: %v", err)
 			return
 		}
@@ -282,7 +283,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 		blockHeight, blockHeader, err :=
 			parseFilteredBlockDisconnectedParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid filtered block "+
+			log(ctx).Warnf("Received invalid filtered block "+
 				"disconnected notification: %v", err)
 			return
 		}
@@ -300,7 +301,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		tx, block, err := parseChainTxNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid recvtx notification: %v",
+			log(ctx).Warnf("Received invalid recvtx notification: %v",
 				err)
 			return
 		}
@@ -317,7 +318,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		tx, block, err := parseChainTxNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid redeemingtx "+
+			log(ctx).Warnf("Received invalid redeemingtx "+
 				"notification: %v", err)
 			return
 		}
@@ -334,7 +335,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		transaction, err := parseRelevantTxAcceptedParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid relevanttxaccepted "+
+			log(ctx).Warnf("Received invalid relevanttxaccepted "+
 				"notification: %v", err)
 			return
 		}
@@ -351,7 +352,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		hash, height, blkTime, err := parseRescanProgressParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid rescanfinished "+
+			log(ctx).Warnf("Received invalid rescanfinished "+
 				"notification: %v", err)
 			return
 		}
@@ -368,7 +369,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		hash, height, blkTime, err := parseRescanProgressParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid rescanprogress "+
+			log(ctx).Warnf("Received invalid rescanprogress "+
 				"notification: %v", err)
 			return
 		}
@@ -385,7 +386,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		hash, amt, err := parseTxAcceptedNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid tx accepted "+
+			log(ctx).Warnf("Received invalid tx accepted "+
 				"notification: %v", err)
 			return
 		}
@@ -402,7 +403,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		rawTx, err := parseTxAcceptedVerboseNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid tx accepted verbose "+
+			log(ctx).Warnf("Received invalid tx accepted verbose "+
 				"notification: %v", err)
 			return
 		}
@@ -419,7 +420,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		connected, err := parseBtcdConnectedNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid btcd connected "+
+			log(ctx).Warnf("Received invalid btcd connected "+
 				"notification: %v", err)
 			return
 		}
@@ -436,7 +437,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 
 		account, bal, conf, err := parseAccountBalanceNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid account balance "+
+			log(ctx).Warnf("Received invalid account balance "+
 				"notification: %v", err)
 			return
 		}
@@ -455,7 +456,7 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 		// discarded.
 		_, locked, err := parseWalletLockStateNtfnParams(ntfn.Params)
 		if err != nil {
-			log.Warnf("Received invalid wallet lock state "+
+			log(ctx).Warnf("Received invalid wallet lock state "+
 				"notification: %v", err)
 			return
 		}
@@ -872,7 +873,7 @@ func (r FutureNotifyBlocksResult) Receive() error {
 // See NotifyBlocks for the blocking version and more details.
 //
 // NOTE: This is a btcd extension and requires a websocket connection.
-func (c *Client) NotifyBlocksAsync() FutureNotifyBlocksResult {
+func (c *Client) NotifyBlocksAsync(ctx context.Context) FutureNotifyBlocksResult {
 	// Not supported in HTTP POST mode.
 	if c.config.HTTPPostMode {
 		return newFutureError(ErrWebsocketsRequired)
@@ -885,7 +886,7 @@ func (c *Client) NotifyBlocksAsync() FutureNotifyBlocksResult {
 	}
 
 	cmd := btcjson.NewNotifyBlocksCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // NotifyBlocks registers the client to receive notifications when blocks are
@@ -898,8 +899,8 @@ func (c *Client) NotifyBlocksAsync() FutureNotifyBlocksResult {
 // OnBlockConnected or OnBlockDisconnected.
 //
 // NOTE: This is a btcd extension and requires a websocket connection.
-func (c *Client) NotifyBlocks() error {
-	return c.NotifyBlocksAsync().Receive()
+func (c *Client) NotifyBlocks(ctx context.Context) error {
+	return c.NotifyBlocksAsync(ctx).Receive()
 }
 
 // FutureNotifySpentResult is a future promise to deliver the result of a
@@ -918,7 +919,7 @@ func (r FutureNotifySpentResult) Receive() error {
 // notifySpentInternal is the same as notifySpentAsync except it accepts
 // the converted outpoints as a parameter so the client can more efficiently
 // recreate the previous notification state on reconnect.
-func (c *Client) notifySpentInternal(outpoints []btcjson.OutPoint) FutureNotifySpentResult {
+func (c *Client) notifySpentInternal(ctx context.Context, outpoints []btcjson.OutPoint) FutureNotifySpentResult {
 	// Not supported in HTTP POST mode.
 	if c.config.HTTPPostMode {
 		return newFutureError(ErrWebsocketsRequired)
@@ -931,7 +932,7 @@ func (c *Client) notifySpentInternal(outpoints []btcjson.OutPoint) FutureNotifyS
 	}
 
 	cmd := btcjson.NewNotifySpentCmd(outpoints)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // newOutPointFromWire constructs the btcjson representation of a transaction
@@ -952,7 +953,7 @@ func newOutPointFromWire(op *wire.OutPoint) btcjson.OutPoint {
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use LoadTxFilterAsync instead.
-func (c *Client) NotifySpentAsync(outpoints []*wire.OutPoint) FutureNotifySpentResult {
+func (c *Client) NotifySpentAsync(ctx context.Context, outpoints []*wire.OutPoint) FutureNotifySpentResult {
 	// Not supported in HTTP POST mode.
 	if c.config.HTTPPostMode {
 		return newFutureError(ErrWebsocketsRequired)
@@ -969,7 +970,7 @@ func (c *Client) NotifySpentAsync(outpoints []*wire.OutPoint) FutureNotifySpentR
 		ops = append(ops, newOutPointFromWire(outpoint))
 	}
 	cmd := btcjson.NewNotifySpentCmd(ops)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // NotifySpent registers the client to receive notifications when the passed
@@ -984,8 +985,8 @@ func (c *Client) NotifySpentAsync(outpoints []*wire.OutPoint) FutureNotifySpentR
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use LoadTxFilter instead.
-func (c *Client) NotifySpent(outpoints []*wire.OutPoint) error {
-	return c.NotifySpentAsync(outpoints).Receive()
+func (c *Client) NotifySpent(ctx context.Context, outpoints []*wire.OutPoint) error {
+	return c.NotifySpentAsync(ctx, outpoints).Receive()
 }
 
 // FutureNotifyNewTransactionsResult is a future promise to deliver the result
@@ -1006,7 +1007,7 @@ func (r FutureNotifyNewTransactionsResult) Receive() error {
 // See NotifyNewTransactionsAsync for the blocking version and more details.
 //
 // NOTE: This is a btcd extension and requires a websocket connection.
-func (c *Client) NotifyNewTransactionsAsync(verbose bool) FutureNotifyNewTransactionsResult {
+func (c *Client) NotifyNewTransactionsAsync(ctx context.Context, verbose bool) FutureNotifyNewTransactionsResult {
 	// Not supported in HTTP POST mode.
 	if c.config.HTTPPostMode {
 		return newFutureError(ErrWebsocketsRequired)
@@ -1019,7 +1020,7 @@ func (c *Client) NotifyNewTransactionsAsync(verbose bool) FutureNotifyNewTransac
 	}
 
 	cmd := btcjson.NewNotifyNewTransactionsCmd(&verbose)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // NotifyNewTransactions registers the client to receive notifications every
@@ -1033,8 +1034,8 @@ func (c *Client) NotifyNewTransactionsAsync(verbose bool) FutureNotifyNewTransac
 // true).
 //
 // NOTE: This is a btcd extension and requires a websocket connection.
-func (c *Client) NotifyNewTransactions(verbose bool) error {
-	return c.NotifyNewTransactionsAsync(verbose).Receive()
+func (c *Client) NotifyNewTransactions(ctx context.Context, verbose bool) error {
+	return c.NotifyNewTransactionsAsync(ctx, verbose).Receive()
 }
 
 // FutureNotifyReceivedResult is a future promise to deliver the result of a
@@ -1053,7 +1054,7 @@ func (r FutureNotifyReceivedResult) Receive() error {
 // notifyReceivedInternal is the same as notifyReceivedAsync except it accepts
 // the converted addresses as a parameter so the client can more efficiently
 // recreate the previous notification state on reconnect.
-func (c *Client) notifyReceivedInternal(addresses []string) FutureNotifyReceivedResult {
+func (c *Client) notifyReceivedInternal(ctx context.Context, addresses []string) FutureNotifyReceivedResult {
 	// Not supported in HTTP POST mode.
 	if c.config.HTTPPostMode {
 		return newFutureError(ErrWebsocketsRequired)
@@ -1067,7 +1068,7 @@ func (c *Client) notifyReceivedInternal(addresses []string) FutureNotifyReceived
 
 	// Convert addresses to strings.
 	cmd := btcjson.NewNotifyReceivedCmd(addresses)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // NotifyReceivedAsync returns an instance of a type that can be used to get the
@@ -1079,7 +1080,7 @@ func (c *Client) notifyReceivedInternal(addresses []string) FutureNotifyReceived
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use LoadTxFilterAsync instead.
-func (c *Client) NotifyReceivedAsync(addresses []btcutil.Address) FutureNotifyReceivedResult {
+func (c *Client) NotifyReceivedAsync(ctx context.Context, addresses []btcutil.Address) FutureNotifyReceivedResult {
 	// Not supported in HTTP POST mode.
 	if c.config.HTTPPostMode {
 		return newFutureError(ErrWebsocketsRequired)
@@ -1097,7 +1098,7 @@ func (c *Client) NotifyReceivedAsync(addresses []btcutil.Address) FutureNotifyRe
 		addrs = append(addrs, addr.String())
 	}
 	cmd := btcjson.NewNotifyReceivedCmd(addrs)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // NotifyReceived registers the client to receive notifications every time a
@@ -1119,8 +1120,8 @@ func (c *Client) NotifyReceivedAsync(addresses []btcutil.Address) FutureNotifyRe
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use LoadTxFilter instead.
-func (c *Client) NotifyReceived(addresses []btcutil.Address) error {
-	return c.NotifyReceivedAsync(addresses).Receive()
+func (c *Client) NotifyReceived(ctx context.Context, addresses []btcutil.Address) error {
+	return c.NotifyReceivedAsync(ctx, addresses).Receive()
 }
 
 // FutureRescanResult is a future promise to deliver the result of a RescanAsync
@@ -1151,7 +1152,7 @@ func (r FutureRescanResult) Receive() error {
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use RescanBlocksAsync instead.
-func (c *Client) RescanAsync(startBlock *chainhash.Hash,
+func (c *Client) RescanAsync(ctx context.Context, startBlock *chainhash.Hash,
 	addresses []btcutil.Address,
 	outpoints []*wire.OutPoint) FutureRescanResult {
 
@@ -1185,7 +1186,7 @@ func (c *Client) RescanAsync(startBlock *chainhash.Hash,
 	}
 
 	cmd := btcjson.NewRescanCmd(startBlockHashStr, addrs, ops, nil)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // Rescan rescans the block chain starting from the provided starting block to
@@ -1216,11 +1217,11 @@ func (c *Client) RescanAsync(startBlock *chainhash.Hash,
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use RescanBlocks instead.
-func (c *Client) Rescan(startBlock *chainhash.Hash,
+func (c *Client) Rescan(ctx context.Context, startBlock *chainhash.Hash,
 	addresses []btcutil.Address,
 	outpoints []*wire.OutPoint) error {
 
-	return c.RescanAsync(startBlock, addresses, outpoints).Receive()
+	return c.RescanAsync(ctx, startBlock, addresses, outpoints).Receive()
 }
 
 // RescanEndBlockAsync returns an instance of a type that can be used to get
@@ -1232,7 +1233,7 @@ func (c *Client) Rescan(startBlock *chainhash.Hash,
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use RescanBlocksAsync instead.
-func (c *Client) RescanEndBlockAsync(startBlock *chainhash.Hash,
+func (c *Client) RescanEndBlockAsync(ctx context.Context, startBlock *chainhash.Hash,
 	addresses []btcutil.Address, outpoints []*wire.OutPoint,
 	endBlock *chainhash.Hash) FutureRescanResult {
 
@@ -1270,7 +1271,7 @@ func (c *Client) RescanEndBlockAsync(startBlock *chainhash.Hash,
 
 	cmd := btcjson.NewRescanCmd(startBlockHashStr, addrs, ops,
 		&endBlockHashStr)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // RescanEndHeight rescans the block chain starting from the provided starting
@@ -1294,11 +1295,11 @@ func (c *Client) RescanEndBlockAsync(startBlock *chainhash.Hash,
 // NOTE: This is a btcd extension and requires a websocket connection.
 //
 // Deprecated: Use RescanBlocks instead.
-func (c *Client) RescanEndHeight(startBlock *chainhash.Hash,
+func (c *Client) RescanEndHeight(ctx context.Context, startBlock *chainhash.Hash,
 	addresses []btcutil.Address, outpoints []*wire.OutPoint,
 	endBlock *chainhash.Hash) error {
 
-	return c.RescanEndBlockAsync(startBlock, addresses, outpoints,
+	return c.RescanEndBlockAsync(ctx, startBlock, addresses, outpoints,
 		endBlock).Receive()
 }
 
@@ -1327,7 +1328,7 @@ func (r FutureLoadTxFilterResult) Receive() error {
 //
 // NOTE: This is a btcd extension ported from github.com/decred/dcrrpcclient
 // and requires a websocket connection.
-func (c *Client) LoadTxFilterAsync(reload bool, addresses []btcutil.Address,
+func (c *Client) LoadTxFilterAsync(ctx context.Context, reload bool, addresses []btcutil.Address,
 	outPoints []wire.OutPoint) FutureLoadTxFilterResult {
 
 	addrStrs := make([]string, len(addresses))
@@ -1343,7 +1344,7 @@ func (c *Client) LoadTxFilterAsync(reload bool, addresses []btcutil.Address,
 	}
 
 	cmd := btcjson.NewLoadTxFilterCmd(reload, addrStrs, outPointObjects)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // LoadTxFilter loads, reloads, or adds data to a websocket client's transaction
@@ -1352,6 +1353,6 @@ func (c *Client) LoadTxFilterAsync(reload bool, addresses []btcutil.Address,
 //
 // NOTE: This is a btcd extension ported from github.com/decred/dcrrpcclient
 // and requires a websocket connection.
-func (c *Client) LoadTxFilter(reload bool, addresses []btcutil.Address, outPoints []wire.OutPoint) error {
-	return c.LoadTxFilterAsync(reload, addresses, outPoints).Receive()
+func (c *Client) LoadTxFilter(ctx context.Context, reload bool, addresses []btcutil.Address, outPoints []wire.OutPoint) error {
+	return c.LoadTxFilterAsync(ctx, reload, addresses, outPoints).Receive()
 }
