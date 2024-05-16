@@ -5,6 +5,7 @@
 package rpcclient
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/btcsuite/btcd/btcjson"
@@ -49,9 +50,9 @@ func (r FutureAddNodeResult) Receive() error {
 // returned instance.
 //
 // See AddNode for the blocking version and more details.
-func (c *Client) AddNodeAsync(host string, command AddNodeCommand) FutureAddNodeResult {
+func (c *Client) AddNodeAsync(ctx context.Context, host string, command AddNodeCommand) FutureAddNodeResult {
 	cmd := btcjson.NewAddNodeCmd(host, btcjson.AddNodeSubCmd(command))
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // AddNode attempts to perform the passed command on the passed persistent peer.
@@ -59,8 +60,8 @@ func (c *Client) AddNodeAsync(host string, command AddNodeCommand) FutureAddNode
 // a one time connection to a peer.
 //
 // It may not be used to remove non-persistent peers.
-func (c *Client) AddNode(host string, command AddNodeCommand) error {
-	return c.AddNodeAsync(host, command).Receive()
+func (c *Client) AddNode(ctx context.Context, host string, command AddNodeCommand) error {
+	return c.AddNodeAsync(ctx, host, command).Receive()
 }
 
 // FutureNodeResult is a future promise to deliver the result of a NodeAsync
@@ -79,10 +80,10 @@ func (r FutureNodeResult) Receive() error {
 // returned instance.
 //
 // See Node for the blocking version and more details.
-func (c *Client) NodeAsync(command btcjson.NodeSubCmd, host string,
+func (c *Client) NodeAsync(ctx context.Context, command btcjson.NodeSubCmd, host string,
 	connectSubCmd *string) FutureNodeResult {
 	cmd := btcjson.NewNodeCmd(command, host, connectSubCmd)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // Node attempts to perform the passed node command on the host.
@@ -92,9 +93,9 @@ func (c *Client) NodeAsync(command btcjson.NodeSubCmd, host string,
 // The connectSubCmd should be set either "perm" or "temp", depending on
 // whether we are targeting a persistent or non-persistent peer. Passing nil
 // will cause the default value to be used, which currently is "temp".
-func (c *Client) Node(command btcjson.NodeSubCmd, host string,
+func (c *Client) Node(ctx context.Context, command btcjson.NodeSubCmd, host string,
 	connectSubCmd *string) error {
-	return c.NodeAsync(command, host, connectSubCmd).Receive()
+	return c.NodeAsync(ctx, command, host, connectSubCmd).Receive()
 }
 
 // FutureGetAddedNodeInfoResult is a future promise to deliver the result of a
@@ -124,17 +125,17 @@ func (r FutureGetAddedNodeInfoResult) Receive() ([]btcjson.GetAddedNodeInfoResul
 // the returned instance.
 //
 // See GetAddedNodeInfo for the blocking version and more details.
-func (c *Client) GetAddedNodeInfoAsync(peer string) FutureGetAddedNodeInfoResult {
+func (c *Client) GetAddedNodeInfoAsync(ctx context.Context, peer string) FutureGetAddedNodeInfoResult {
 	cmd := btcjson.NewGetAddedNodeInfoCmd(true, &peer)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetAddedNodeInfo returns information about manually added (persistent) peers.
 //
 // See GetAddedNodeInfoNoDNS to retrieve only a list of the added (persistent)
 // peers.
-func (c *Client) GetAddedNodeInfo(peer string) ([]btcjson.GetAddedNodeInfoResult, error) {
-	return c.GetAddedNodeInfoAsync(peer).Receive()
+func (c *Client) GetAddedNodeInfo(ctx context.Context, peer string) ([]btcjson.GetAddedNodeInfoResult, error) {
+	return c.GetAddedNodeInfoAsync(ctx, peer).Receive()
 }
 
 // FutureGetAddedNodeInfoNoDNSResult is a future promise to deliver the result
@@ -164,9 +165,9 @@ func (r FutureGetAddedNodeInfoNoDNSResult) Receive() ([]string, error) {
 // function on the returned instance.
 //
 // See GetAddedNodeInfoNoDNS for the blocking version and more details.
-func (c *Client) GetAddedNodeInfoNoDNSAsync(peer string) FutureGetAddedNodeInfoNoDNSResult {
+func (c *Client) GetAddedNodeInfoNoDNSAsync(ctx context.Context, peer string) FutureGetAddedNodeInfoNoDNSResult {
 	cmd := btcjson.NewGetAddedNodeInfoCmd(false, &peer)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetAddedNodeInfoNoDNS returns a list of manually added (persistent) peers.
@@ -174,8 +175,8 @@ func (c *Client) GetAddedNodeInfoNoDNSAsync(peer string) FutureGetAddedNodeInfoN
 //
 // See GetAddedNodeInfo to obtain more information about each added (persistent)
 // peer.
-func (c *Client) GetAddedNodeInfoNoDNS(peer string) ([]string, error) {
-	return c.GetAddedNodeInfoNoDNSAsync(peer).Receive()
+func (c *Client) GetAddedNodeInfoNoDNS(ctx context.Context, peer string) ([]string, error) {
+	return c.GetAddedNodeInfoNoDNSAsync(ctx, peer).Receive()
 }
 
 // FutureGetConnectionCountResult is a future promise to deliver the result
@@ -205,14 +206,14 @@ func (r FutureGetConnectionCountResult) Receive() (int64, error) {
 // the returned instance.
 //
 // See GetConnectionCount for the blocking version and more details.
-func (c *Client) GetConnectionCountAsync() FutureGetConnectionCountResult {
+func (c *Client) GetConnectionCountAsync(ctx context.Context) FutureGetConnectionCountResult {
 	cmd := btcjson.NewGetConnectionCountCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetConnectionCount returns the number of active connections to other peers.
-func (c *Client) GetConnectionCount() (int64, error) {
-	return c.GetConnectionCountAsync().Receive()
+func (c *Client) GetConnectionCount(ctx context.Context) (int64, error) {
+	return c.GetConnectionCountAsync(ctx).Receive()
 }
 
 // FuturePingResult is a future promise to deliver the result of a PingAsync RPC
@@ -231,17 +232,17 @@ func (r FuturePingResult) Receive() error {
 // instance.
 //
 // See Ping for the blocking version and more details.
-func (c *Client) PingAsync() FuturePingResult {
+func (c *Client) PingAsync(ctx context.Context) FuturePingResult {
 	cmd := btcjson.NewPingCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // Ping queues a ping to be sent to each connected peer.
 //
 // Use the GetPeerInfo function and examine the PingTime and PingWait fields to
 // access the ping times.
-func (c *Client) Ping() error {
-	return c.PingAsync().Receive()
+func (c *Client) Ping(ctx context.Context) error {
+	return c.PingAsync(ctx).Receive()
 }
 
 // FutureGetNetworkInfoResult is a future promise to deliver the result of a
@@ -271,14 +272,14 @@ func (r FutureGetNetworkInfoResult) Receive() (*btcjson.GetNetworkInfoResult, er
 // returned instance.
 //
 // See GetNetworkInfo for the blocking version and more details.
-func (c *Client) GetNetworkInfoAsync() FutureGetNetworkInfoResult {
+func (c *Client) GetNetworkInfoAsync(ctx context.Context) FutureGetNetworkInfoResult {
 	cmd := btcjson.NewGetNetworkInfoCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetNetworkInfo returns data about the current network.
-func (c *Client) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
-	return c.GetNetworkInfoAsync().Receive()
+func (c *Client) GetNetworkInfo(ctx context.Context) (*btcjson.GetNetworkInfoResult, error) {
+	return c.GetNetworkInfoAsync(ctx).Receive()
 }
 
 // FutureGetNodeAddressesResult is a future promise to deliver the result of a
@@ -308,14 +309,14 @@ func (r FutureGetNodeAddressesResult) Receive() ([]btcjson.GetNodeAddressesResul
 // returned instance.
 //
 // See GetNodeAddresses for the blocking version and more details.
-func (c *Client) GetNodeAddressesAsync(count *int32) FutureGetNodeAddressesResult {
+func (c *Client) GetNodeAddressesAsync(ctx context.Context, count *int32) FutureGetNodeAddressesResult {
 	cmd := btcjson.NewGetNodeAddressesCmd(count)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetNodeAddresses returns data about known node addresses.
-func (c *Client) GetNodeAddresses(count *int32) ([]btcjson.GetNodeAddressesResult, error) {
-	return c.GetNodeAddressesAsync(count).Receive()
+func (c *Client) GetNodeAddresses(ctx context.Context, count *int32) ([]btcjson.GetNodeAddressesResult, error) {
+	return c.GetNodeAddressesAsync(ctx, count).Receive()
 }
 
 // FutureGetPeerInfoResult is a future promise to deliver the result of a
@@ -345,14 +346,14 @@ func (r FutureGetPeerInfoResult) Receive() ([]btcjson.GetPeerInfoResult, error) 
 // returned instance.
 //
 // See GetPeerInfo for the blocking version and more details.
-func (c *Client) GetPeerInfoAsync() FutureGetPeerInfoResult {
+func (c *Client) GetPeerInfoAsync(ctx context.Context) FutureGetPeerInfoResult {
 	cmd := btcjson.NewGetPeerInfoCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetPeerInfo returns data about each connected network peer.
-func (c *Client) GetPeerInfo() ([]btcjson.GetPeerInfoResult, error) {
-	return c.GetPeerInfoAsync().Receive()
+func (c *Client) GetPeerInfo(ctx context.Context) ([]btcjson.GetPeerInfoResult, error) {
+	return c.GetPeerInfoAsync(ctx).Receive()
 }
 
 // FutureGetNetTotalsResult is a future promise to deliver the result of a
@@ -382,12 +383,12 @@ func (r FutureGetNetTotalsResult) Receive() (*btcjson.GetNetTotalsResult, error)
 // returned instance.
 //
 // See GetNetTotals for the blocking version and more details.
-func (c *Client) GetNetTotalsAsync() FutureGetNetTotalsResult {
+func (c *Client) GetNetTotalsAsync(ctx context.Context) FutureGetNetTotalsResult {
 	cmd := btcjson.NewGetNetTotalsCmd()
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // GetNetTotals returns network traffic statistics.
-func (c *Client) GetNetTotals() (*btcjson.GetNetTotalsResult, error) {
-	return c.GetNetTotalsAsync().Receive()
+func (c *Client) GetNetTotals(ctx context.Context) (*btcjson.GetNetTotalsResult, error) {
+	return c.GetNetTotalsAsync(ctx).Receive()
 }

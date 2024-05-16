@@ -97,6 +97,7 @@ const (
 // jsonRequest holds information about a json request that is used to properly
 // detect, interpret, and deliver a reply to it.
 type jsonRequest struct {
+	ctx            context.Context // bad, but no way around due to the spaghetti...
 	id             uint64
 	method         string
 	cmd            interface{}
@@ -365,7 +366,7 @@ func (r rawResponse) result() (result []byte, err error) {
 }
 
 // handleMessage is the main handler for incoming notifications and responses.
-func (c *Client) handleMessage(msg []byte) {
+func (c *Client) handleMessage(ctx context.Context, msg []byte) {
 	// Attempt to unmarshal the message as either a notification or
 	// response.
 	var in inMessage
@@ -373,7 +374,7 @@ func (c *Client) handleMessage(msg []byte) {
 	in.rawNotification = new(rawNotification)
 	err := json.Unmarshal(msg, &in)
 	if err != nil {
-		log.Warnf("Remote server sent invalid message: %v", err)
+		log(ctx).Warnf("Remote server sent invalid message: %v", err)
 		return
 	}
 
@@ -381,43 +382,43 @@ func (c *Client) handleMessage(msg []byte) {
 	if in.ID == nil {
 		ntfn := in.rawNotification
 		if ntfn == nil {
-			log.Warn("Malformed notification: missing " +
+			log(ctx).Warn("Malformed notification: missing " +
 				"method and parameters")
 			return
 		}
 		if ntfn.Method == "" {
-			log.Warn("Malformed notification: missing method")
+			log(ctx).Warn("Malformed notification: missing method")
 			return
 		}
 		// params are not optional: nil isn't valid (but len == 0 is)
 		if ntfn.Params == nil {
-			log.Warn("Malformed notification: missing params")
+			log(ctx).Warn("Malformed notification: missing params")
 			return
 		}
 		// Deliver the notification.
-		log.Tracef("Received notification [%s]", in.Method)
-		c.handleNotification(in.rawNotification)
+		log(ctx).Tracef("Received notification [%s]", in.Method)
+		c.handleNotification(ctx, in.rawNotification)
 		return
 	}
 
 	// ensure that in.ID can be converted to an integer without loss of precision
 	if *in.ID < 0 || *in.ID != math.Trunc(*in.ID) {
-		log.Warn("Malformed response: invalid identifier")
+		log(ctx).Warn("Malformed response: invalid identifier")
 		return
 	}
 
 	if in.rawResponse == nil {
-		log.Warn("Malformed response: missing result and error")
+		log(ctx).Warn("Malformed response: missing result and error")
 		return
 	}
 
 	id := uint64(*in.ID)
-	log.Tracef("Received response for id %d (result %s)", id, in.Result)
+	log(ctx).Tracef("Received response for id %d (result %s)", id, in.Result)
 	request := c.removeRequest(id)
 
 	// Nothing more to do if there is no request associated with this reply.
 	if request == nil || request.responseChan == nil {
-		log.Warnf("Received unexpected reply: %s (id %d)", in.Result,
+		log(ctx).Warnf("Received unexpected reply: %s (id %d)", in.Result,
 			id)
 		return
 	}
@@ -456,7 +457,7 @@ func (c *Client) shouldLogReadError(err error) bool {
 
 // wsInHandler handles all incoming messages for the websocket connection
 // associated with the client.  It must be run as a goroutine.
-func (c *Client) wsInHandler() {
+func (c *Client) wsInHandler(ctx context.Context) {
 out:
 	for {
 		// Break out of the loop once the shutdown channel has been
@@ -472,18 +473,18 @@ out:
 		if err != nil {
 			// Log the error if it's not due to disconnecting.
 			if c.shouldLogReadError(err) {
-				log.Errorf("Websocket receive error from "+
+				log(ctx).Errorf("Websocket receive error from "+
 					"%s: %v", c.config.Host, err)
 			}
 			break out
 		}
-		c.handleMessage(msg)
+		c.handleMessage(ctx, msg)
 	}
 
 	// Ensure the connection is closed.
-	c.Disconnect()
+	c.Disconnect(ctx)
 	c.wg.Done()
-	log.Tracef("RPC client input handler done for %s", c.config.Host)
+	log(ctx).Tracef("RPC client input handler done for %s", c.config.Host)
 }
 
 // disconnectChan returns a copy of the current disconnect channel.  The channel
@@ -499,7 +500,7 @@ func (c *Client) disconnectChan() <-chan struct{} {
 // wsOutHandler handles all outgoing messages for the websocket connection.  It
 // uses a buffered channel to serialize output messages while allowing the
 // sender to continue running asynchronously.  It must be run as a goroutine.
-func (c *Client) wsOutHandler() {
+func (c *Client) wsOutHandler(ctx context.Context) {
 out:
 	for {
 		// Send any messages ready for send until the client is
@@ -508,7 +509,7 @@ out:
 		case msg := <-c.sendChan:
 			err := c.wsConn.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
-				c.Disconnect()
+				c.Disconnect(ctx)
 				break out
 			}
 
@@ -528,7 +529,7 @@ cleanup:
 		}
 	}
 	c.wg.Done()
-	log.Tracef("RPC client output handler done for %s", c.config.Host)
+	log(ctx).Tracef("RPC client output handler done for %s", c.config.Host)
 }
 
 // sendMessage sends the passed JSON to the connected server using the
@@ -546,7 +547,7 @@ func (c *Client) sendMessage(marshalledJSON []byte) {
 // reregisterNtfns creates and sends commands needed to re-establish the current
 // notification state associated with the client.  It should only be called on
 // on reconnect by the resendRequests function.
-func (c *Client) reregisterNtfns() error {
+func (c *Client) reregisterNtfns(ctx context.Context) error {
 	// Nothing to do if the caller is not interested in notifications.
 	if c.ntfnHandlers == nil {
 		return nil
@@ -566,17 +567,17 @@ func (c *Client) reregisterNtfns() error {
 
 	// Reregister notifyblocks if needed.
 	if stateCopy.notifyBlocks {
-		log.Debugf("Reregistering [notifyblocks]")
-		if err := c.NotifyBlocks(); err != nil {
+		log(ctx).Debugf("Reregistering [notifyblocks]")
+		if err := c.NotifyBlocks(ctx); err != nil {
 			return err
 		}
 	}
 
 	// Reregister notifynewtransactions if needed.
 	if stateCopy.notifyNewTx || stateCopy.notifyNewTxVerbose {
-		log.Debugf("Reregistering [notifynewtransactions] (verbose=%v)",
+		log(ctx).Debugf("Reregistering [notifynewtransactions] (verbose=%v)",
 			stateCopy.notifyNewTxVerbose)
-		err := c.NotifyNewTransactions(stateCopy.notifyNewTxVerbose)
+		err := c.NotifyNewTransactions(ctx, stateCopy.notifyNewTxVerbose)
 		if err != nil {
 			return err
 		}
@@ -590,8 +591,8 @@ func (c *Client) reregisterNtfns() error {
 		for op := range stateCopy.notifySpent {
 			outpoints = append(outpoints, op)
 		}
-		log.Debugf("Reregistering [notifyspent] outpoints: %v", outpoints)
-		if err := c.notifySpentInternal(outpoints).Receive(); err != nil {
+		log(ctx).Debugf("Reregistering [notifyspent] outpoints: %v", outpoints)
+		if err := c.notifySpentInternal(ctx, outpoints).Receive(); err != nil {
 			return err
 		}
 	}
@@ -604,8 +605,8 @@ func (c *Client) reregisterNtfns() error {
 		for addr := range stateCopy.notifyReceived {
 			addresses = append(addresses, addr)
 		}
-		log.Debugf("Reregistering [notifyreceived] addresses: %v", addresses)
-		if err := c.notifyReceivedInternal(addresses).Receive(); err != nil {
+		log(ctx).Debugf("Reregistering [notifyreceived] addresses: %v", addresses)
+		if err := c.notifyReceivedInternal(ctx, addresses).Receive(); err != nil {
 			return err
 		}
 	}
@@ -622,12 +623,12 @@ var ignoreResends = map[string]struct{}{
 // resendRequests resends any requests that had not completed when the client
 // disconnected.  It is intended to be called once the client has reconnected as
 // a separate goroutine.
-func (c *Client) resendRequests() {
+func (c *Client) resendRequests(ctx context.Context) {
 	// Set the notification state back up.  If anything goes wrong,
 	// disconnect the client.
-	if err := c.reregisterNtfns(); err != nil {
-		log.Warnf("Unable to re-establish notification state: %v", err)
-		c.Disconnect()
+	if err := c.reregisterNtfns(ctx); err != nil {
+		log(ctx).Warnf("Unable to re-establish notification state: %v", err)
+		c.Disconnect(ctx)
 		return
 	}
 
@@ -661,7 +662,7 @@ func (c *Client) resendRequests() {
 			return
 		}
 
-		log.Tracef("Sending command [%s] with id %d", jReq.method,
+		log(ctx).Tracef("Sending command [%s] with id %d", jReq.method,
 			jReq.id)
 		c.sendMessage(jReq.marshalledJSON)
 	}
@@ -675,7 +676,7 @@ func (c *Client) resendRequests() {
 // options is set.
 //
 // This function must be run as a goroutine.
-func (c *Client) wsReconnectHandler() {
+func (c *Client) wsReconnectHandler(ctx context.Context) {
 out:
 	for {
 		select {
@@ -698,7 +699,7 @@ out:
 			wsConn, err := dial(c.config)
 			if err != nil {
 				c.retryCount++
-				log.Infof("Failed to connect to %s: %v",
+				log(ctx).Infof("Failed to connect to %s: %v",
 					c.config.Host, err)
 
 				// Scale the retry interval by the number of
@@ -709,13 +710,13 @@ out:
 				if scaledDuration > time.Minute {
 					scaledDuration = time.Minute
 				}
-				log.Infof("Retrying connection to %s in "+
+				log(ctx).Infof("Retrying connection to %s in "+
 					"%s", c.config.Host, scaledDuration)
 				time.Sleep(scaledDuration)
 				continue reconnect
 			}
 
-			log.Infof("Reestablished connection to RPC server %s",
+			log(ctx).Infof("Reestablished connection to RPC server %s",
 				c.config.Host)
 
 			// Reset the version in case the backend was
@@ -736,11 +737,11 @@ out:
 
 			// Start processing input and output for the
 			// new connection.
-			c.start()
+			c.start(ctx)
 
 			// Reissue pending requests in another goroutine since
 			// the send can block.
-			go c.resendRequests()
+			go c.resendRequests(ctx)
 
 			// Break out of the reconnect loop back to wait for
 			// disconnect again.
@@ -748,7 +749,7 @@ out:
 		}
 	}
 	c.wg.Done()
-	log.Tracef("RPC client reconnect handler done for %s", c.config.Host)
+	log(ctx).Tracef("RPC client reconnect handler done for %s", c.config.Host)
 }
 
 // handleSendPostMessage handles performing the passed HTTP request, reading the
@@ -775,7 +776,7 @@ func (c *Client) handleSendPostMessage(jReq *jsonRequest) {
 	}
 
 	var url string
-	switch parsedAddr.Network(){
+	switch parsedAddr.Network() {
 	case "unix", "unixpacket":
 		// Using a placeholder URL because a non-empty URL is required.
 		// The Unix domain socket is specified in the DialContext.
@@ -789,7 +790,7 @@ func (c *Client) handleSendPostMessage(jReq *jsonRequest) {
 		var httpReq *http.Request
 
 		bodyReader := bytes.NewReader(jReq.marshalledJSON)
-		httpReq, err = http.NewRequest("POST", url, bodyReader)
+		httpReq, err = http.NewRequestWithContext(jReq.ctx, "POST", url, bodyReader)
 		if err != nil {
 			jReq.responseChan <- &Response{result: nil, err: err}
 			return
@@ -811,7 +812,8 @@ func (c *Client) handleSendPostMessage(jReq *jsonRequest) {
 		httpResponse, err = c.httpClient.Do(httpReq)
 
 		// Quit the retry loop on success or if we can't retry anymore.
-		if err == nil || i == tries-1 {
+		// Important: if the context is finished, avoid retrying.
+		if err == nil || i == tries-1 || jReq.ctx.Err() != nil {
 			break
 		}
 
@@ -826,7 +828,7 @@ func (c *Client) handleSendPostMessage(jReq *jsonRequest) {
 		if backoff > time.Minute {
 			backoff = time.Minute
 		}
-		log.Debugf("Failed command [%s] with id %d attempt %d."+
+		log(jReq.ctx).Debugf("Failed command [%s] with id %d attempt %d."+
 			" Retrying in %v... \n", jReq.method, jReq.id,
 			i, backoff)
 
@@ -894,7 +896,7 @@ func (c *Client) handleSendPostMessage(jReq *jsonRequest) {
 // in HTTP POST mode.  It uses a buffered channel to serialize output messages
 // while allowing the sender to continue running asynchronously.  It must be run
 // as a goroutine.
-func (c *Client) sendPostHandler() {
+func (c *Client) sendPostHandler(ctx context.Context) {
 out:
 	for {
 		// Send any messages ready for send until the shutdown channel
@@ -924,7 +926,7 @@ cleanup:
 		}
 	}
 	c.wg.Done()
-	log.Tracef("RPC client send handler done for %s", c.config.Host)
+	log(ctx).Tracef("RPC client send handler done for %s", c.config.Host)
 }
 
 // sendPostRequest sends the passed HTTP request to the RPC server using the
@@ -940,7 +942,7 @@ func (c *Client) sendPostRequest(jReq *jsonRequest) {
 
 	select {
 	case c.sendPostChan <- jReq:
-		log.Tracef("Sent command [%s] with id %d", jReq.method, jReq.id)
+		log(jReq.ctx).Tracef("Sent command [%s] with id %d", jReq.method, jReq.id)
 
 	case <-c.shutdown:
 		return
@@ -982,7 +984,7 @@ func (c *Client) sendRequest(jReq *jsonRequest) {
 	if c.config.HTTPPostMode {
 		if c.batch {
 			if err := c.addRequest(jReq); err != nil {
-				log.Warn(err)
+				log(jReq.ctx).Warn(err)
 			}
 		} else {
 			c.sendPostRequest(jReq)
@@ -1007,7 +1009,7 @@ func (c *Client) sendRequest(jReq *jsonRequest) {
 		jReq.responseChan <- &Response{err: err}
 		return
 	}
-	log.Tracef("Sending command [%s] with id %d", jReq.method, jReq.id)
+	log(jReq.ctx).Tracef("Sending command [%s] with id %d", jReq.method, jReq.id)
 	c.sendMessage(jReq.marshalledJSON)
 }
 
@@ -1015,7 +1017,7 @@ func (c *Client) sendRequest(jReq *jsonRequest) {
 // response channel on which the reply will be delivered at some point in the
 // future.  It handles both websocket and HTTP POST mode depending on the
 // configuration of the client.
-func (c *Client) SendCmd(cmd interface{}) chan *Response {
+func (c *Client) SendCmd(ctx context.Context, cmd interface{}) chan *Response {
 	rpcVersion := btcjson.RpcVersion1
 	if c.batch {
 		rpcVersion = btcjson.RpcVersion2
@@ -1033,12 +1035,13 @@ func (c *Client) SendCmd(cmd interface{}) chan *Response {
 		return newFutureError(err)
 	}
 
-	log.Debugf("%s/%d: sending marshalled JSON: %s",
+	log(ctx).Debugf("%s/%d: sending marshalled JSON: %s",
 		method, id, string(marshalledJSON))
 
 	// Generate the request and send it along with a channel to respond on.
 	responseChan := make(chan *Response, 1)
 	jReq := &jsonRequest{
+		ctx:            ctx,
 		id:             id,
 		method:         method,
 		cmd:            cmd,
@@ -1054,10 +1057,10 @@ func (c *Client) SendCmd(cmd interface{}) chan *Response {
 // sendCmdAndWait sends the passed command to the associated server, waits
 // for the reply, and returns the result from it.  It will return the error
 // field in the reply if there is one.
-func (c *Client) sendCmdAndWait(cmd interface{}) (interface{}, error) {
+func (c *Client) sendCmdAndWait(ctx context.Context, cmd interface{}) (interface{}, error) {
 	// Marshal the command to JSON-RPC, send it to the connected server, and
 	// wait for a response on the returned channel.
-	return ReceiveFuture(c.SendCmd(cmd))
+	return ReceiveFuture(c.SendCmd(ctx, cmd))
 }
 
 // Disconnected returns whether or not the server is disconnected.  If a
@@ -1079,7 +1082,7 @@ func (c *Client) Disconnected() bool {
 // not needed or the client is running in HTTP POST mode.
 //
 // This function is safe for concurrent access.
-func (c *Client) doDisconnect() bool {
+func (c *Client) doDisconnect(ctx context.Context) bool {
 	if c.config.HTTPPostMode {
 		return false
 	}
@@ -1092,7 +1095,7 @@ func (c *Client) doDisconnect() bool {
 		return false
 	}
 
-	log.Tracef("Disconnecting RPC client %s", c.config.Host)
+	log(ctx).Tracef("Disconnecting RPC client %s", c.config.Host)
 	close(c.disconnect)
 	if c.wsConn != nil {
 		c.wsConn.Close()
@@ -1105,7 +1108,7 @@ func (c *Client) doDisconnect() bool {
 // is already in progress.  It will return false if the shutdown is not needed.
 //
 // This function is safe for concurrent access.
-func (c *Client) doShutdown() bool {
+func (c *Client) doShutdown(ctx context.Context) bool {
 	// Ignore the shutdown request if the client is already in the process
 	// of shutting down or already shutdown.
 	select {
@@ -1114,7 +1117,7 @@ func (c *Client) doShutdown() bool {
 	default:
 	}
 
-	log.Tracef("Shutting down RPC client %s", c.config.Host)
+	log(ctx).Tracef("Shutting down RPC client %s", c.config.Host)
 	close(c.shutdown)
 	return true
 }
@@ -1124,9 +1127,9 @@ func (c *Client) doShutdown() bool {
 // created with the DisableAutoReconnect flag.
 //
 // This function has no effect when the client is running in HTTP POST mode.
-func (c *Client) Disconnect() {
+func (c *Client) Disconnect(ctx context.Context) {
 	// Nothing to do if already disconnected or running in HTTP POST mode.
-	if !c.doDisconnect() {
+	if !c.doDisconnect(ctx) {
 		return
 	}
 
@@ -1144,14 +1147,14 @@ func (c *Client) Disconnect() {
 			}
 		}
 		c.removeAllRequests()
-		c.doShutdown()
+		c.doShutdown(ctx)
 	}
 }
 
 // Shutdown shuts down the client by disconnecting any connections associated
 // with the client and, when automatic reconnect is enabled, preventing future
 // attempts to reconnect.  It also stops all goroutines.
-func (c *Client) Shutdown() {
+func (c *Client) Shutdown(ctx context.Context) {
 	// Do the shutdown under the request lock to prevent clients from
 	// adding new requests while the client shutdown process is initiated.
 	c.requestLock.Lock()
@@ -1159,7 +1162,7 @@ func (c *Client) Shutdown() {
 
 	// Ignore the shutdown request if the client is already in the process
 	// of shutting down or already shutdown.
-	if !c.doShutdown() {
+	if !c.doShutdown(ctx) {
 		return
 	}
 
@@ -1174,18 +1177,18 @@ func (c *Client) Shutdown() {
 	c.removeAllRequests()
 
 	// Disconnect the client if needed.
-	c.doDisconnect()
+	c.doDisconnect(ctx)
 }
 
 // start begins processing input and output messages.
-func (c *Client) start() {
-	log.Tracef("Starting RPC client %s", c.config.Host)
+func (c *Client) start(ctx context.Context) {
+	log(ctx).Tracef("Starting RPC client %s", c.config.Host)
 
 	// Start the I/O processing handlers depending on whether the client is
 	// in HTTP POST mode or the default websocket mode.
 	if c.config.HTTPPostMode {
 		c.wg.Add(1)
-		go c.sendPostHandler()
+		go c.sendPostHandler(ctx)
 	} else {
 		c.wg.Add(3)
 		go func() {
@@ -1196,8 +1199,8 @@ func (c *Client) start() {
 			}
 			c.wg.Done()
 		}()
-		go c.wsInHandler()
-		go c.wsOutHandler()
+		go c.wsInHandler(ctx)
+		go c.wsOutHandler(ctx)
 	}
 }
 
@@ -1449,7 +1452,7 @@ func dial(config *ConnConfig) (*websocket.Conn, error) {
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func New(config *ConnConfig, ntfnHandlers *NotificationHandlers) (*Client, error) {
+func New(ctx context.Context, config *ConnConfig, ntfnHandlers *NotificationHandlers) (*Client, error) {
 	// Either open a websocket connection or create an HTTP client depending
 	// on the HTTP POST mode.  Also, set the notification handlers to nil
 	// when running in HTTP POST mode.
@@ -1514,13 +1517,13 @@ func New(config *ConnConfig, ntfnHandlers *NotificationHandlers) (*Client, error
 	}
 
 	if start {
-		log.Infof("Established connection to RPC server %s",
+		log(ctx).Infof("Established connection to RPC server %s",
 			config.Host)
 		close(connEstablished)
-		client.start()
+		client.start(ctx)
 		if !client.config.HTTPPostMode && !client.config.DisableAutoReconnect {
 			client.wg.Add(1)
-			go client.wsReconnectHandler()
+			go client.wsReconnectHandler(ctx)
 		}
 	}
 
@@ -1531,17 +1534,17 @@ func New(config *ConnConfig, ntfnHandlers *NotificationHandlers) (*Client, error
 // JSON-RPC 2.0. The client is capable of accepting an arbitrary number of requests
 // and having the server process the all at the same time. It's compatible with both
 // btcd and bitcoind
-func NewBatch(config *ConnConfig) (*Client, error) {
+func NewBatch(ctx context.Context, config *ConnConfig) (*Client, error) {
 	if !config.HTTPPostMode {
 		return nil, errors.New("http post mode is required to use batch client")
 	}
 	// notification parameter is nil since notifications are not supported in POST mode.
-	client, err := New(config, nil)
+	client, err := New(ctx, config, nil)
 	if err != nil {
 		return nil, err
 	}
 	client.batch = true //copy the client with changed batch setting
-	client.start()
+	client.start(ctx)
 	return client, nil
 }
 
@@ -1556,7 +1559,7 @@ func NewBatch(config *ConnConfig) (*Client, error) {
 // This method will error if the client is not configured for websockets, if the
 // connection has already been established, or if none of the connection
 // attempts were successful.
-func (c *Client) Connect(tries int) error {
+func (c *Client) Connect(ctx context.Context, tries int) error {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
@@ -1586,14 +1589,14 @@ func (c *Client) Connect(tries int) error {
 		// Connection was established.  Set the websocket connection
 		// member of the client and start the goroutines necessary
 		// to run the client.
-		log.Infof("Established connection to RPC server %s",
+		log(ctx).Infof("Established connection to RPC server %s",
 			c.config.Host)
 		c.wsConn = wsConn
 		close(c.connEstablished)
-		c.start()
+		c.start(ctx)
 		if !c.config.DisableAutoReconnect {
 			c.wg.Add(1)
-			go c.wsReconnectHandler()
+			go c.wsReconnectHandler(ctx)
 		}
 		return nil
 	}
@@ -1604,7 +1607,7 @@ func (c *Client) Connect(tries int) error {
 
 // BackendVersion retrieves the version of the backend the client is currently
 // connected to.
-func (c *Client) BackendVersion() (BackendVersion, error) {
+func (c *Client) BackendVersion(ctx context.Context) (BackendVersion, error) {
 	c.backendVersionMu.Lock()
 	defer c.backendVersionMu.Unlock()
 
@@ -1615,12 +1618,12 @@ func (c *Client) BackendVersion() (BackendVersion, error) {
 	// We'll start by calling GetInfo. This method doesn't exist for
 	// bitcoind nodes as of v0.16.0, so we'll assume the client is connected
 	// to a btcd backend if it does exist.
-	info, err := c.GetInfo()
+	info, err := c.GetInfo(ctx)
 
 	switch err := err.(type) {
 	// Parse the btcd version and cache it.
 	case nil:
-		log.Debugf("Detected btcd version: %v", info.Version)
+		log(ctx).Debugf("Detected btcd version: %v", info.Version)
 		version := parseBtcdVersion(info.Version)
 		c.backendVersion = version
 		return c.backendVersion, nil
@@ -1640,21 +1643,21 @@ func (c *Client) BackendVersion() (BackendVersion, error) {
 	// Since the GetInfo method was not found, we assume the client is
 	// connected to a bitcoind backend, which exposes its version through
 	// GetNetworkInfo.
-	networkInfo, err := c.GetNetworkInfo()
+	networkInfo, err := c.GetNetworkInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to detect bitcoind version: %v",
 			err)
 	}
 
 	// Parse the bitcoind version and cache it.
-	log.Debugf("Detected bitcoind version: %v", networkInfo.SubVersion)
+	log(ctx).Debugf("Detected bitcoind version: %v", networkInfo.SubVersion)
 	version := parseBitcoindVersion(networkInfo.SubVersion)
 	c.backendVersion = &version
 
 	return c.backendVersion, nil
 }
 
-func (c *Client) sendAsync() FutureGetBulkResult {
+func (c *Client) sendAsync(ctx context.Context) FutureGetBulkResult {
 	// convert the array of marshalled json requests to a single request we can send
 	responseChan := make(chan *Response, 1)
 	marshalledRequest := []byte("[")
@@ -1669,6 +1672,7 @@ func (c *Client) sendAsync() FutureGetBulkResult {
 	}
 	marshalledRequest = append(marshalledRequest, []byte("]")...)
 	request := jsonRequest{
+		ctx:            ctx,
 		id:             c.NextID(),
 		method:         "",
 		cmd:            nil,
@@ -1681,13 +1685,13 @@ func (c *Client) sendAsync() FutureGetBulkResult {
 
 // Marshall's bulk requests and sends to the server
 // creates a response channel to receive the response
-func (c *Client) Send() error {
+func (c *Client) Send(ctx context.Context) error {
 	// if batchlist is empty, there's nothing to send
 	if c.batchList.Len() == 0 {
 		return nil
 	}
 
-	batchResp, err := c.sendAsync().Receive()
+	batchResp, err := c.sendAsync(ctx).Receive()
 	if err != nil {
 		// Clear batchlist in case of an error.
 		//
@@ -1709,7 +1713,7 @@ func (c *Client) Send() error {
 		// request.
 		fullResult, err := json.Marshal(resp.Result)
 		if err != nil {
-			log.Errorf("Unable to marshal result: %v for req=%v",
+			log(ctx).Errorf("Unable to marshal result: %v for req=%v",
 				err, request.id)
 
 			continue
@@ -1736,74 +1740,74 @@ func (c *Client) Send() error {
 // connections. We accept a custom function to resolve any TCP addresses so
 // that caller is able control exactly how resolution is performed.
 func ParseAddressString(strAddress string) (net.Addr, error) {
-    var parsedNetwork, parsedAddr string
+	var parsedNetwork, parsedAddr string
 
-    // Addresses can either be in network://address:port format,
-    // network:address:port, address:port, or just port. We want to support
-    // all possible types.
-    if strings.Contains(strAddress, "://") {
-        parts := strings.Split(strAddress, "://")
-        parsedNetwork, parsedAddr = parts[0], parts[1]
-    } else if strings.Contains(strAddress, ":") {
-        parts := strings.Split(strAddress, ":")
-        parsedNetwork = parts[0]
-        parsedAddr = strings.Join(parts[1:], ":")
-    } else {
-        parsedAddr = strAddress
-    }
+	// Addresses can either be in network://address:port format,
+	// network:address:port, address:port, or just port. We want to support
+	// all possible types.
+	if strings.Contains(strAddress, "://") {
+		parts := strings.Split(strAddress, "://")
+		parsedNetwork, parsedAddr = parts[0], parts[1]
+	} else if strings.Contains(strAddress, ":") {
+		parts := strings.Split(strAddress, ":")
+		parsedNetwork = parts[0]
+		parsedAddr = strings.Join(parts[1:], ":")
+	} else {
+		parsedAddr = strAddress
+	}
 
-    // Only TCP and Unix socket addresses are valid. We can't use IP or
-    // UDP only connections for anything we do in lnd.
-    switch parsedNetwork {
-    case "unix", "unixpacket":
-        return net.ResolveUnixAddr(parsedNetwork, parsedAddr)
+	// Only TCP and Unix socket addresses are valid. We can't use IP or
+	// UDP only connections for anything we do in lnd.
+	switch parsedNetwork {
+	case "unix", "unixpacket":
+		return net.ResolveUnixAddr(parsedNetwork, parsedAddr)
 
-    case "tcp", "tcp4", "tcp6":
-        return net.ResolveTCPAddr(parsedNetwork, verifyPort(parsedAddr))
+	case "tcp", "tcp4", "tcp6":
+		return net.ResolveTCPAddr(parsedNetwork, verifyPort(parsedAddr))
 
-    case "ip", "ip4", "ip6", "udp", "udp4", "udp6", "unixgram":
-        return nil, fmt.Errorf("only TCP or unix socket "+
-            "addresses are supported: %s", parsedAddr)
+	case "ip", "ip4", "ip6", "udp", "udp4", "udp6", "unixgram":
+		return nil, fmt.Errorf("only TCP or unix socket "+
+			"addresses are supported: %s", parsedAddr)
 
-    default:
-        // We'll now possibly use the local host short circuit
-        // or parse out an all interfaces listen.
-        addrWithPort := verifyPort(strAddress)
+	default:
+		// We'll now possibly use the local host short circuit
+		// or parse out an all interfaces listen.
+		addrWithPort := verifyPort(strAddress)
 
-        // Otherwise, we'll attempt to resolve the host.
-        return net.ResolveTCPAddr("tcp", addrWithPort)
-    }
+		// Otherwise, we'll attempt to resolve the host.
+		return net.ResolveTCPAddr("tcp", addrWithPort)
+	}
 }
 
 // verifyPort makes sure that an address string has both a host and a port.
 // If the address is just a port, then we'll assume that the user is using the
 // short cut to specify a localhost:port address.
 func verifyPort(address string) string {
-    host, port, err := net.SplitHostPort(address)
-    if err != nil {
-        // If the address itself is just an integer, then we'll assume
-        // that we're mapping this directly to a localhost:port pair.
-        // This ensures we maintain the legacy behavior.
-        if _, err := strconv.Atoi(address); err == nil {
-            return net.JoinHostPort("localhost", address)
-        }
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		// If the address itself is just an integer, then we'll assume
+		// that we're mapping this directly to a localhost:port pair.
+		// This ensures we maintain the legacy behavior.
+		if _, err := strconv.Atoi(address); err == nil {
+			return net.JoinHostPort("localhost", address)
+		}
 
-        // Otherwise, we'll assume that the address just failed to
-        // attach its own port, so we'll leave it as is. In the
-        // case of IPv6 addresses, if the host is already surrounded by
-        // brackets, then we'll avoid using the JoinHostPort function,
-        // since it will always add a pair of brackets.
-        if strings.HasPrefix(address, "[") {
-            return address
-        }
-        return net.JoinHostPort(address, "")
-    }
+		// Otherwise, we'll assume that the address just failed to
+		// attach its own port, so we'll leave it as is. In the
+		// case of IPv6 addresses, if the host is already surrounded by
+		// brackets, then we'll avoid using the JoinHostPort function,
+		// since it will always add a pair of brackets.
+		if strings.HasPrefix(address, "[") {
+			return address
+		}
+		return net.JoinHostPort(address, "")
+	}
 
-    // In the case that both the host and port are empty, we'll use the
-    // an empty port.
-    if host == "" && port == "" {
-        return ":"
-    }
+	// In the case that both the host and port are empty, we'll use the
+	// an empty port.
+	if host == "" && port == "" {
+		return ":"
+	}
 
-    return address
+	return address
 }

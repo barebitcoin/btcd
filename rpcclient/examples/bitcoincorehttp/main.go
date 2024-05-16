@@ -5,12 +5,15 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/btcsuite/btcd/rpcclient"
 )
 
 func main() {
+	ctx := context.Background()
+
 	// Connect to local bitcoin core RPC server using HTTP POST mode.
 	connCfg := &rpcclient.ConnConfig{
 		Host:         "localhost:8332",
@@ -21,14 +24,14 @@ func main() {
 	}
 	// Notice the notification parameter is nil since notifications are
 	// not supported in HTTP POST mode.
-	client, err := rpcclient.New(connCfg, nil)
+	client, err := rpcclient.New(ctx, connCfg, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
 	// Get the current block count.
-	blockCount, err := client.GetBlockCount()
+	blockCount, err := client.GetBlockCount(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

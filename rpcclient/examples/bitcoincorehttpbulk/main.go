@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -12,6 +13,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	// Connect to local bitcoin core RPC server using HTTP POST mode.
 	connCfg := &rpcclient.ConnConfig{
 		Host:                "localhost:8332",
@@ -21,23 +24,23 @@ func main() {
 		HTTPPostMode:        true, // Bitcoin core only supports HTTP POST mode
 		DisableTLS:          true, // Bitcoin core does not provide TLS by default
 	}
-	batchClient, err := rpcclient.NewBatch(connCfg)
-	defer batchClient.Shutdown()
+	batchClient, err := rpcclient.NewBatch(ctx, connCfg)
+	defer batchClient.Shutdown(ctx)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// batch mode requires async requests
-	blockCount := batchClient.GetBlockCountAsync()
-	block1 := batchClient.GetBlockHashAsync(1)
-	batchClient.GetBlockHashAsync(2)
-	batchClient.GetBlockHashAsync(3)
-	block4 := batchClient.GetBlockHashAsync(4)
-	difficulty := batchClient.GetDifficultyAsync()
+	blockCount := batchClient.GetBlockCountAsync(ctx)
+	block1 := batchClient.GetBlockHashAsync(ctx, 1)
+	batchClient.GetBlockHashAsync(ctx, 2)
+	batchClient.GetBlockHashAsync(ctx, 3)
+	block4 := batchClient.GetBlockHashAsync(ctx, 4)
+	difficulty := batchClient.GetDifficultyAsync(ctx)
 
 	// sends all queued batch requests
-	batchClient.Send()
+	batchClient.Send(ctx)
 
 	fmt.Println(blockCount.Receive())
 	fmt.Println(block1.Receive())

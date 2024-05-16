@@ -5,8 +5,9 @@
 package main
 
 import (
-	"os"
+	"context"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	// Only override the handlers for notifications you care about.
 	// Also note most of the handlers will only be called if you register
 	// for notifications.  See the documentation of the rpcclient
@@ -40,14 +43,14 @@ func main() {
 		Pass:         "yourrpcpass",
 		Certificates: certs,
 	}
-	client, err := rpcclient.New(connCfg, &ntfnHandlers)
+	client, err := rpcclient.New(ctx, connCfg, &ntfnHandlers)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Get the list of unspent transaction outputs (utxos) that the
 	// connected wallet has at least one private key for.
-	unspent, err := client.ListUnspent()
+	unspent, err := client.ListUnspent(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,7 +65,7 @@ func main() {
 	log.Println("Client shutdown in 10 seconds...")
 	time.AfterFunc(time.Second*10, func() {
 		log.Println("Client shutting down...")
-		client.Shutdown()
+		client.Shutdown(ctx)
 		log.Println("Client shutdown complete.")
 	})
 

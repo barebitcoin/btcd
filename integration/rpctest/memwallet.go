@@ -352,7 +352,7 @@ func (m *memWallet) newAddress() (btcutil.Address, error) {
 		return nil, err
 	}
 
-	err = m.rpc.LoadTxFilter(false, []btcutil.Address{addr}, nil)
+	err = m.rpc.LoadTxFilter(ctx, false, []btcutil.Address{addr}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -458,7 +458,7 @@ func (m *memWallet) SendOutputs(outputs []*wire.TxOut,
 		return nil, err
 	}
 
-	return m.rpc.SendRawTransaction(tx, true)
+	return m.rpc.SendRawTransaction(ctx, tx, true)
 }
 
 // SendOutputsWithoutChange creates and sends a transaction that pays to the
@@ -472,7 +472,7 @@ func (m *memWallet) SendOutputsWithoutChange(outputs []*wire.TxOut,
 		return nil, err
 	}
 
-	return m.rpc.SendRawTransaction(tx, true)
+	return m.rpc.SendRawTransaction(ctx, tx, true)
 }
 
 // CreateTransaction returns a fully signed transaction paying to the specified

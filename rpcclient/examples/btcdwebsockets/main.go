@@ -5,8 +5,9 @@
 package main
 
 import (
-	"os"
+	"context"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	// Only override the handlers for notifications you care about.
 	// Also note most of these handlers will only be called if you register
 	// for notifications.  See the documentation of the rpcclient
@@ -44,19 +47,19 @@ func main() {
 		Pass:         "yourrpcpass",
 		Certificates: certs,
 	}
-	client, err := rpcclient.New(connCfg, &ntfnHandlers)
+	client, err := rpcclient.New(ctx, connCfg, &ntfnHandlers)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Register for block connect and disconnect notifications.
-	if err := client.NotifyBlocks(); err != nil {
+	if err := client.NotifyBlocks(ctx); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("NotifyBlocks: Registration Complete")
 
 	// Get the current block count.
-	blockCount, err := client.GetBlockCount()
+	blockCount, err := client.GetBlockCount(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,7 +71,7 @@ func main() {
 	log.Println("Client shutdown in 10 seconds...")
 	time.AfterFunc(time.Second*10, func() {
 		log.Println("Client shutting down...")
-		client.Shutdown()
+		client.Shutdown(ctx)
 		log.Println("Client shutdown complete.")
 	})
 

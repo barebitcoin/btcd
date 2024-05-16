@@ -5,6 +5,7 @@
 package rpctest
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -45,6 +46,8 @@ const (
 )
 
 var (
+	ctx = context.Background()
+
 	// current number of active test nodes.
 	numTestInstances = 0
 
@@ -257,13 +260,13 @@ func (h *Harness) SetUp(createTestChain bool, numMatureOutputs uint32) error {
 	// Filter transactions that pay to the coinbase associated with the
 	// wallet.
 	filterAddrs := []btcutil.Address{h.wallet.coinbaseAddr}
-	if err := h.Client.LoadTxFilter(true, filterAddrs, nil); err != nil {
+	if err := h.Client.LoadTxFilter(ctx, true, filterAddrs, nil); err != nil {
 		return err
 	}
 
 	// Ensure btcd properly dispatches our registered call-back for each new
 	// block. Otherwise, the memWallet won't function properly.
-	if err := h.Client.NotifyBlocks(); err != nil {
+	if err := h.Client.NotifyBlocks(ctx); err != nil {
 		return err
 	}
 
@@ -272,7 +275,7 @@ func (h *Harness) SetUp(createTestChain bool, numMatureOutputs uint32) error {
 	if createTestChain && numMatureOutputs != 0 {
 		coinbaseMaturity := uint32(h.ActiveNet.CoinbaseMaturity)
 		numToGenerate := coinbaseMaturity + numMatureOutputs
-		_, err := h.Client.Generate(numToGenerate)
+		_, err := h.Client.Generate(ctx, numToGenerate)
 		if err != nil {
 			return err
 		}
@@ -280,7 +283,7 @@ func (h *Harness) SetUp(createTestChain bool, numMatureOutputs uint32) error {
 
 	// Block until the wallet has fully synced up to the tip of the main
 	// chain.
-	_, height, err := h.Client.GetBestBlock()
+	_, height, err := h.Client.GetBestBlock(ctx)
 	if err != nil {
 		return err
 	}
@@ -302,11 +305,11 @@ func (h *Harness) SetUp(createTestChain bool, numMatureOutputs uint32) error {
 // This function MUST be called with the harness state mutex held (for writes).
 func (h *Harness) tearDown() error {
 	if h.Client != nil {
-		h.Client.Shutdown()
+		h.Client.Shutdown(ctx)
 	}
 
 	if h.BatchClient != nil {
-		h.BatchClient.Shutdown()
+		h.BatchClient.Shutdown(ctx)
 	}
 
 	if err := h.node.shutdown(); err != nil {
@@ -351,14 +354,14 @@ func (h *Harness) connectRPCClient() error {
 		fail := false
 		timeout := time.Duration(i) * h.ConnectionRetryTimeout
 		if client == nil {
-			client, err = rpcclient.New(&rpcConf, h.handlers)
+			client, err = rpcclient.New(ctx, &rpcConf, h.handlers)
 			if err != nil {
 				time.Sleep(timeout)
 				fail = true
 			}
 		}
 		if batchClient == nil {
-			batchClient, err = rpcclient.NewBatch(&batchConf)
+			batchClient, err = rpcclient.NewBatch(ctx, &batchConf)
 			if err != nil {
 				time.Sleep(timeout)
 				fail = true
@@ -499,11 +502,11 @@ func (h *Harness) GenerateAndSubmitBlockWithCustomCoinbaseOutputs(
 		blockVersion = BlockVersion
 	}
 
-	prevBlockHash, prevBlockHeight, err := h.Client.GetBestBlock()
+	prevBlockHash, prevBlockHeight, err := h.Client.GetBestBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
-	mBlock, err := h.Client.GetBlock(prevBlockHash)
+	mBlock, err := h.Client.GetBlock(ctx, prevBlockHash)
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +521,7 @@ func (h *Harness) GenerateAndSubmitBlockWithCustomCoinbaseOutputs(
 	}
 
 	// Submit the block to the simnet node.
-	if err := h.Client.SubmitBlock(newBlock, nil); err != nil {
+	if err := h.Client.SubmitBlock(ctx, newBlock, nil); err != nil {
 		return nil, err
 	}
 
@@ -570,10 +573,10 @@ func NextAvailablePortForProcess(pid int) int {
 		os.TempDir(), fmt.Sprintf("rpctest-port-pid-%d.lock", pid),
 	)
 	timeout := time.After(time.Second)
-	
+
 	var (
 		lockFileHandle *os.File
-		err error
+		err            error
 	)
 	for {
 		// Attempt to acquire the lock file. If it already exists, wait

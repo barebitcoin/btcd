@@ -5,9 +5,13 @@
 package rpcclient
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/btcsuite/btcd/btcjson"
 )
+
+var ctx = context.Background()
 
 var connCfg = &ConnConfig{
 	Host:         "localhost:8332",
@@ -18,13 +22,13 @@ var connCfg = &ConnConfig{
 }
 
 func ExampleClient_GetDescriptorInfo() {
-	client, err := New(connCfg, nil)
+	client, err := New(ctx, connCfg, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
-	descriptorInfo, err := client.GetDescriptorInfo(
+	descriptorInfo, err := client.GetDescriptorInfo(ctx,
 		"wpkh([d34db33f/84h/0h/0h]0279be667ef9dcbbac55a06295Ce870b07029Bfcdb2dce28d959f2815b16f81798)")
 	if err != nil {
 		panic(err)
@@ -35,11 +39,11 @@ func ExampleClient_GetDescriptorInfo() {
 }
 
 func ExampleClient_ImportMulti() {
-	client, err := New(connCfg, nil)
+	client, err := New(ctx, connCfg, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
 	requests := []btcjson.ImportMultiRequest{
 		{
@@ -54,7 +58,7 @@ func ExampleClient_ImportMulti() {
 	}
 	opts := &btcjson.ImportMultiOptions{Rescan: true}
 
-	resp, err := client.ImportMulti(requests, opts)
+	resp, err := client.ImportMulti(ctx, requests, opts)
 	if err != nil {
 		panic(err)
 	}
@@ -64,13 +68,13 @@ func ExampleClient_ImportMulti() {
 }
 
 func ExampleClient_DeriveAddresses() {
-	client, err := New(connCfg, nil)
+	client, err := New(ctx, connCfg, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
-	addrs, err := client.DeriveAddresses(
+	addrs, err := client.DeriveAddresses(ctx,
 		"pkh([f34db33f/44'/0'/0']xpub6Cc939fyHvfB9pPLWd3bSyyQFvgKbwhidca49jGCM5Hz5ypEPGf9JVXB4NBuUfPgoHnMjN6oNgdC9KRqM11RZtL8QLW6rFKziNwHDYhZ6Kx/0/*)#ed7px9nu",
 		&btcjson.DescriptorRange{Value: []int{0, 2}})
 	if err != nil {
@@ -82,13 +86,13 @@ func ExampleClient_DeriveAddresses() {
 }
 
 func ExampleClient_GetAddressInfo() {
-	client, err := New(connCfg, nil)
+	client, err := New(ctx, connCfg, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
-	info, err := client.GetAddressInfo("2NF1FbxtUAsvdU4uW1UC2xkBVatp6cYQuJ3")
+	info, err := client.GetAddressInfo(ctx, "2NF1FbxtUAsvdU4uW1UC2xkBVatp6cYQuJ3")
 	if err != nil {
 		panic(err)
 	}
@@ -100,13 +104,13 @@ func ExampleClient_GetAddressInfo() {
 }
 
 func ExampleClient_GetWalletInfo() {
-	client, err := New(connCfg, nil)
+	client, err := New(ctx, connCfg, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
-	info, err := client.GetWalletInfo()
+	info, err := client.GetWalletInfo(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -118,13 +122,13 @@ func ExampleClient_GetWalletInfo() {
 }
 
 func ExampleClient_GetTxOutSetInfo() {
-	client, err := New(connCfg, nil)
+	client, err := New(ctx, connCfg, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
-	r, err := client.GetTxOutSetInfo()
+	r, err := client.GetTxOutSetInfo(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -137,13 +141,13 @@ func ExampleClient_GetTxOutSetInfo() {
 }
 
 func ExampleClient_CreateWallet() {
-	client, err := New(connCfg, nil)
+	client, err := New(ctx, connCfg, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Shutdown()
+	defer client.Shutdown(ctx)
 
-	r, err := client.CreateWallet(
+	r, err := client.CreateWallet(ctx,
 		"mywallet",
 		WithCreateWalletBlank(),
 		WithCreateWalletPassphrase("secret"),
