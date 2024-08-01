@@ -260,6 +260,8 @@ type ListTransactionsResult struct {
 	Generated         bool     `json:"generated,omitempty"`
 	InvolvesWatchOnly bool     `json:"involveswatchonly,omitempty"`
 	Label             *string  `json:"label,omitempty"`
+	ReplacesTXID      string   `json:"replaces_txid"`
+	ReplacedByTXID    string   `json:"replaced_by_txid"`
 	Time              int64    `json:"time"`
 	TimeReceived      int64    `json:"timereceived"`
 	Trusted           bool     `json:"trusted"`
