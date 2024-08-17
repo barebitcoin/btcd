@@ -34,10 +34,10 @@ func (m *MockTxMempool) TxDescs() []*TxDesc {
 // RawMempoolVerbose returns all the entries in the mempool as a fully
 // populated btcjson result.
 func (m *MockTxMempool) RawMempoolVerbose() map[string]*btcjson.
-	GetRawMempoolVerboseResult {
+	GetMempoolEntryResult {
 
 	args := m.Called()
-	return args.Get(0).(map[string]*btcjson.GetRawMempoolVerboseResult)
+	return args.Get(0).(map[string]*btcjson.GetMempoolEntryResult)
 }
 
 // Count returns the number of transactions in the main pool. It does not

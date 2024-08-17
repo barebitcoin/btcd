@@ -1226,11 +1226,11 @@ func (mp *TxPool) MiningDescs() []*mining.TxDesc {
 // populated btcjson result.
 //
 // This function is safe for concurrent access.
-func (mp *TxPool) RawMempoolVerbose() map[string]*btcjson.GetRawMempoolVerboseResult {
+func (mp *TxPool) RawMempoolVerbose() map[string]*btcjson.GetMempoolEntryResult {
 	mp.mtx.RLock()
 	defer mp.mtx.RUnlock()
 
-	result := make(map[string]*btcjson.GetRawMempoolVerboseResult,
+	result := make(map[string]*btcjson.GetMempoolEntryResult,
 		len(mp.pool))
 	bestHeight := mp.cfg.BestHeight()
 
@@ -1246,16 +1246,18 @@ func (mp *TxPool) RawMempoolVerbose() map[string]*btcjson.GetRawMempoolVerboseRe
 				bestHeight+1)
 		}
 
-		mpd := &btcjson.GetRawMempoolVerboseResult{
-			Size:             int32(tx.MsgTx().SerializeSize()),
-			Vsize:            int32(GetTxVirtualSize(tx)),
-			Weight:           int32(blockchain.GetTransactionWeight(tx)),
-			Fee:              btcutil.Amount(desc.Fee).ToBTC(),
-			Time:             desc.Added.Unix(),
-			Height:           int64(desc.Height),
-			StartingPriority: desc.StartingPriority,
-			CurrentPriority:  currentPriority,
-			Depends:          make([]string, 0),
+		_ = currentPriority
+
+		mpd := &btcjson.GetMempoolEntryResult{
+			Size:   int32(tx.MsgTx().SerializeSize()),
+			VSize:  int32(GetTxVirtualSize(tx)),
+			Weight: blockchain.GetTransactionWeight(tx),
+			Fee:    btcutil.Amount(desc.Fee).ToBTC(),
+			Time:   desc.Added.Unix(),
+			Height: int64(desc.Height),
+			// StartingPriority: desc.StartingPriority,
+			// CurrentPriority:  currentPriority,
+			Depends: make([]string, 0),
 		}
 		for _, txIn := range tx.MsgTx().TxIn {
 			hash := &txIn.PreviousOutPoint.Hash

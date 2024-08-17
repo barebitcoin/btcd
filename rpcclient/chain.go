@@ -57,8 +57,8 @@ func (c *Client) GetBestBlockHash(ctx context.Context) (*chainhash.Hash, error) 
 // contains two separate bools to denote verbosity, in contract to a single int
 // parameter.
 func (c *Client) legacyGetBlockRequest(ctx context.Context, hash string, verbose,
-	verboseTx bool) ([]byte, error) {
-
+	verboseTx bool,
+) ([]byte, error) {
 	hashJSON, err := json.Marshal(hash)
 	if err != nil {
 		return nil, err
@@ -80,8 +80,8 @@ func (c *Client) legacyGetBlockRequest(ctx context.Context, hash string, verbose
 // Response indicates an invalid parameter was provided, a legacy style of the
 // request is resent and its Response is returned instead.
 func (c *Client) waitForGetBlockRes(ctx context.Context, respChan chan *Response, hash string,
-	verbose, verboseTx bool) ([]byte, error) {
-
+	verbose, verboseTx bool,
+) ([]byte, error) {
 	res, err := ReceiveFuture(respChan)
 
 	// If we receive an invalid parameter error, then we may be
@@ -819,7 +819,7 @@ type FutureGetRawMempoolVerboseResult chan *Response
 // Receive waits for the Response promised by the future and returns a map of
 // transaction hashes to an associated data structure with information about the
 // transaction for all transactions in the memory pool.
-func (r FutureGetRawMempoolVerboseResult) Receive() (map[string]btcjson.GetRawMempoolVerboseResult, error) {
+func (r FutureGetRawMempoolVerboseResult) Receive() (map[string]btcjson.GetMempoolEntryResult, error) {
 	res, err := ReceiveFuture(r)
 	if err != nil {
 		return nil, err
@@ -827,7 +827,7 @@ func (r FutureGetRawMempoolVerboseResult) Receive() (map[string]btcjson.GetRawMe
 
 	// Unmarshal the result as a map of strings (tx shas) to their detailed
 	// results.
-	var mempoolItems map[string]btcjson.GetRawMempoolVerboseResult
+	var mempoolItems map[string]btcjson.GetMempoolEntryResult
 	err = json.Unmarshal(res, &mempoolItems)
 	if err != nil {
 		return nil, err
@@ -850,7 +850,7 @@ func (c *Client) GetRawMempoolVerboseAsync(ctx context.Context) FutureGetRawMemp
 // the memory pool.
 //
 // See GetRawMempool to retrieve only the transaction hashes instead.
-func (c *Client) GetRawMempoolVerbose(ctx context.Context) (map[string]btcjson.GetRawMempoolVerboseResult, error) {
+func (c *Client) GetRawMempoolVerbose(ctx context.Context) (map[string]btcjson.GetMempoolEntryResult, error) {
 	return c.GetRawMempoolVerboseAsync(ctx).Receive()
 }
 
@@ -1228,7 +1228,8 @@ func (r FutureGetCFilterResult) Receive() (*wire.MsgCFilter, error) {
 //
 // See GetCFilter for the blocking version and more details.
 func (c *Client) GetCFilterAsync(ctx context.Context, blockHash *chainhash.Hash,
-	filterType wire.FilterType) FutureGetCFilterResult {
+	filterType wire.FilterType,
+) FutureGetCFilterResult {
 	hash := ""
 	if blockHash != nil {
 		hash = blockHash.String()
@@ -1240,7 +1241,8 @@ func (c *Client) GetCFilterAsync(ctx context.Context, blockHash *chainhash.Hash,
 
 // GetCFilter returns a raw filter from the server given its block hash.
 func (c *Client) GetCFilter(ctx context.Context, blockHash *chainhash.Hash,
-	filterType wire.FilterType) (*wire.MsgCFilter, error) {
+	filterType wire.FilterType,
+) (*wire.MsgCFilter, error) {
 	return c.GetCFilterAsync(ctx, blockHash, filterType).Receive()
 }
 
@@ -1272,7 +1274,6 @@ func (r FutureGetCFilterHeaderResult) Receive() (*wire.MsgCFHeaders, error) {
 	// Assign the hash to a headers message and return it.
 	msgCFHeaders := wire.MsgCFHeaders{PrevFilterHeader: *headerHash}
 	return &msgCFHeaders, nil
-
 }
 
 // GetCFilterHeaderAsync returns an instance of a type that can be used to get
@@ -1281,7 +1282,8 @@ func (r FutureGetCFilterHeaderResult) Receive() (*wire.MsgCFHeaders, error) {
 //
 // See GetCFilterHeader for the blocking version and more details.
 func (c *Client) GetCFilterHeaderAsync(ctx context.Context, blockHash *chainhash.Hash,
-	filterType wire.FilterType) FutureGetCFilterHeaderResult {
+	filterType wire.FilterType,
+) FutureGetCFilterHeaderResult {
 	hash := ""
 	if blockHash != nil {
 		hash = blockHash.String()
@@ -1294,7 +1296,8 @@ func (c *Client) GetCFilterHeaderAsync(ctx context.Context, blockHash *chainhash
 // GetCFilterHeader returns a raw filter header from the server given its block
 // hash.
 func (c *Client) GetCFilterHeader(ctx context.Context, blockHash *chainhash.Hash,
-	filterType wire.FilterType) (*wire.MsgCFHeaders, error) {
+	filterType wire.FilterType,
+) (*wire.MsgCFHeaders, error) {
 	return c.GetCFilterHeaderAsync(ctx, blockHash, filterType).Receive()
 }
 

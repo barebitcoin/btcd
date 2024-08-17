@@ -22,7 +22,7 @@ type TxMempool interface {
 
 	// RawMempoolVerbose returns all the entries in the mempool as a fully
 	// populated btcjson result.
-	RawMempoolVerbose() map[string]*btcjson.GetRawMempoolVerboseResult
+	RawMempoolVerbose() map[string]*btcjson.GetMempoolEntryResult
 
 	// Count returns the number of transactions in the main pool. It does
 	// not include the orphan pool.
