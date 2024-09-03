@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -445,6 +446,14 @@ func unmarshalGetBlockChainInfoResultSoftForks(chainInfo *btcjson.GetBlockChainI
 	if version.SupportUnifiedSoftForks() {
 		var softForks btcjson.UnifiedSoftForks
 		if err := json.Unmarshal(res, &softForks); err != nil {
+
+			// Try parsing the legacy format as well.
+			if err := unmarshalGetBlockChainInfoResultSoftForks(
+				chainInfo, BitcoindPre19, res,
+			); err == nil {
+				return nil
+			}
+
 			return err
 		}
 		chainInfo.UnifiedSoftForks = &softForks
@@ -470,7 +479,7 @@ func (r FutureGetBlockChainInfoResult) Receive() (*btcjson.GetBlockChainInfoResu
 	}
 	chainInfo, err := unmarshalPartialGetBlockChainInfoResult(res)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal partial blockchain info: %w", err)
 	}
 
 	// Inspect the version to determine how we'll need to parse the
@@ -482,7 +491,7 @@ func (r FutureGetBlockChainInfoResult) Receive() (*btcjson.GetBlockChainInfoResu
 
 	err = unmarshalGetBlockChainInfoResultSoftForks(chainInfo, version, res)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal soft forks blockchain info: %s: %w", string(res), err)
 	}
 
 	return chainInfo, nil
