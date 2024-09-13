@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/barebitcoin/btcd/rpcclient/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
@@ -1449,7 +1449,7 @@ func (r FutureReconsiderBlockResult) Receive() error {
 // returned instance.
 //
 // See ReconsiderBlock for the blocking version and more details.
-func (c *Client) ReconsiderBlockAsync(
+func (c *Client) ReconsiderBlockAsync(ctx context.Context,
 	blockHash *chainhash.Hash) FutureReconsiderBlockResult {
 
 	hash := ""
@@ -1458,12 +1458,12 @@ func (c *Client) ReconsiderBlockAsync(
 	}
 
 	cmd := btcjson.NewReconsiderBlockCmd(hash)
-	return c.SendCmd(cmd)
+	return c.SendCmd(ctx, cmd)
 }
 
 // ReconsiderBlock reconsiders an verifies a specific block and the branch that
 // the block is included in.  If the block is valid on reconsideration, the chain
 // will reorg to that block if it has more PoW than the current tip.
-func (c *Client) ReconsiderBlock(blockHash *chainhash.Hash) error {
-	return c.ReconsiderBlockAsync(blockHash).Receive()
+func (c *Client) ReconsiderBlock(ctx context.Context, blockHash *chainhash.Hash) error {
+	return c.ReconsiderBlockAsync(ctx, blockHash).Receive()
 }

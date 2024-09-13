@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/barebitcoin/btcd/rpcclient/btcjson"
 )
 
 var ctx = context.Background()

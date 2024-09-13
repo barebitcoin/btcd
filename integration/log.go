@@ -6,7 +6,7 @@ package integration
 import (
 	"os"
 
-	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/barebitcoin/btcd/rpcclient"
 	"github.com/btcsuite/btclog"
 )
 

@@ -8,7 +8,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/barebitcoin/btcd/rpcclient"
 )
 
 func main() {
