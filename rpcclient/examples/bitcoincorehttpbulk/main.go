@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/barebitcoin/btcd/rpcclient"
 )
 
 func main() {

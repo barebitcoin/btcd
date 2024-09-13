@@ -1,5 +1,5 @@
-// Copyright (c) 2016-2017 The btcsuite developers
-// Copyright (c) 2015-2016 The Decred developers
+// Copyright (c) 2017 The btcsuite developers
+// Copyright (c) 2017 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -9,13 +9,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/barebitcoin/btcd/rpcclient/btcjson"
 )
 
-// TestBtcdExtCustomResults ensures any results that have custom marshalling
+// TestChainSvrWsResults ensures any results that have custom marshalling
 // work as intended.
-// and unmarshal code of results are as expected.
-func TestBtcdExtCustomResults(t *testing.T) {
+func TestChainSvrWsResults(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -24,16 +23,12 @@ func TestBtcdExtCustomResults(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "versionresult",
-			result: &btcjson.VersionResult{
-				VersionString: "1.0.0",
-				Major:         1,
-				Minor:         0,
-				Patch:         0,
-				Prerelease:    "pr",
-				BuildMetadata: "bm",
+			name: "RescannedBlock",
+			result: &btcjson.RescannedBlock{
+				Hash:         "blockhash",
+				Transactions: []string{"serializedtx"},
 			},
-			expected: `{"versionstring":"1.0.0","major":1,"minor":0,"patch":0,"prerelease":"pr","buildmetadata":"bm"}`,
+			expected: `{"hash":"blockhash","transactions":["serializedtx"]}`,
 		},
 	}
 

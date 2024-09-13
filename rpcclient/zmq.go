@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/barebitcoin/btcd/rpcclient/btcjson"
 )
 
 // FutureGetZmqNotificationsResult is a future promise to deliver the result of
