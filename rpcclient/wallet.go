@@ -2965,6 +2965,28 @@ func (c *Client) LoadWallet(ctx context.Context, walletName string) (*btcjson.Lo
 	return c.LoadWalletAsync(ctx, walletName).Receive()
 }
 
+// FutureListWallets is a future promise to deliver the result of an
+// ListWallets RPC invocation (or an applicable error)
+type FutureListWalletsResult chan *Response
+
+func (r FutureListWalletsResult) Receive() ([]string, error) {
+	bytes, err := ReceiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	return result, json.Unmarshal(bytes, &result)
+}
+
+func (c *Client) ListWalletsAsync(ctx context.Context) FutureListWalletsResult {
+	return c.SendCmd(ctx, btcjson.NewListWalletsCmd())
+}
+
+func (c *Client) ListWallets(ctx context.Context) ([]string, error) {
+	return c.ListWalletsAsync(ctx).Receive()
+}
+
 // TODO(davec): Implement
 // encryptwallet (Won't be supported by btcwallet since it's always encrypted)
 // listaddressgroupings (NYI in btcwallet)

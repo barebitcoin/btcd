@@ -375,6 +375,12 @@ func NewLoadWalletCmd(walletName string) *LoadWalletCmd {
 	return &LoadWalletCmd{WalletName: walletName}
 }
 
+type ListWalletsCmd struct{}
+
+func NewListWalletsCmd() *ListWalletsCmd {
+	return &ListWalletsCmd{}
+}
+
 // ImportPrivKeyCmd defines the importprivkey JSON-RPC command.
 type ImportPrivKeyCmd struct {
 	PrivKey string
@@ -1218,6 +1224,7 @@ func init() {
 	MustRegisterCmd("listsinceblock", (*ListSinceBlockCmd)(nil), flags)
 	MustRegisterCmd("listtransactions", (*ListTransactionsCmd)(nil), flags)
 	MustRegisterCmd("listunspent", (*ListUnspentCmd)(nil), flags)
+	MustRegisterCmd("listwallets", (*ListWalletsCmd)(nil), flags)
 	MustRegisterCmd("loadwallet", (*LoadWalletCmd)(nil), flags)
 	MustRegisterCmd("lockunspent", (*LockUnspentCmd)(nil), flags)
 	MustRegisterCmd("move", (*MoveCmd)(nil), flags)
