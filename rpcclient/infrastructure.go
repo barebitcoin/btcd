@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -761,66 +760,30 @@ func (c *Client) handleSendPostMessage(jReq *jsonRequest) {
 
 	url := protocol + "://" + c.config.Host
 
-	var (
-		err, lastErr error
-		backoff      time.Duration
-		httpResponse *http.Response
-	)
+	var httpReq *http.Request
 
-	tries := 10
-	for i := 0; i < tries; i++ {
-		var httpReq *http.Request
-
-		bodyReader := bytes.NewReader(jReq.marshalledJSON)
-		httpReq, err = http.NewRequestWithContext(jReq.ctx, "POST", url, bodyReader)
-		if err != nil {
-			jReq.responseChan <- &Response{result: nil, err: err}
-			return
-		}
-		httpReq.Close = true
-		httpReq.Header.Set("Content-Type", "application/json")
-		for key, value := range c.config.ExtraHeaders {
-			httpReq.Header.Set(key, value)
-		}
-
-		// Configure basic access authorization.
-		user, pass, err := c.config.getAuth()
-		if err != nil {
-			jReq.responseChan <- &Response{result: nil, err: err}
-			return
-		}
-		httpReq.SetBasicAuth(user, pass)
-
-		httpResponse, err = c.httpClient.Do(httpReq)
-
-		// Quit the retry loop on success or if we can't retry anymore.
-		// Important: if the context is finished, avoid retrying.
-		if err == nil || i == tries-1 || jReq.ctx.Err() != nil {
-			break
-		}
-
-		// Save the last error for the case where we backoff further,
-		// retry and get an invalid response but no error. If this
-		// happens the saved last error will be used to enrich the error
-		// message that we pass back to the caller.
-		lastErr = err
-
-		// Backoff sleep otherwise.
-		backoff = requestRetryInterval * time.Duration(i+1)
-		if backoff > time.Minute {
-			backoff = time.Minute
-		}
-		log(jReq.ctx).Debugf("Failed command [%s] with id %d attempt %d."+
-			" Retrying in %v... \n", jReq.method, jReq.id,
-			i, backoff)
-
-		select {
-		case <-time.After(backoff):
-
-		case <-c.shutdown:
-			return
-		}
+	bodyReader := bytes.NewReader(jReq.marshalledJSON)
+	httpReq, err := http.NewRequestWithContext(jReq.ctx, "POST", url, bodyReader)
+	if err != nil {
+		jReq.responseChan <- &Response{result: nil, err: err}
+		return
 	}
+	httpReq.Close = true
+	httpReq.Header.Set("Content-Type", "application/json")
+	for key, value := range c.config.ExtraHeaders {
+		httpReq.Header.Set(key, value)
+	}
+
+	// Configure basic access authorization.
+	user, pass, err := c.config.getAuth()
+	if err != nil {
+		jReq.responseChan <- &Response{result: nil, err: err}
+		return
+	}
+	httpReq.SetBasicAuth(user, pass)
+
+	httpResponse, err := c.httpClient.Do(httpReq)
+	// Immediately handle the result, no retry
 	if err != nil {
 		jReq.responseChan <- &Response{err: err}
 		return
@@ -831,14 +794,14 @@ func (c *Client) handleSendPostMessage(jReq *jsonRequest) {
 	if httpResponse == nil {
 		jReq.responseChan <- &Response{
 			err: fmt.Errorf("invalid http POST response (nil), "+
-				"method: %s, id: %d, last error=%v",
-				jReq.method, jReq.id, lastErr),
+				"method: %s, id: %d",
+				jReq.method, jReq.id),
 		}
 		return
 	}
 
 	// Read the raw bytes and close the response.
-	respBytes, err := ioutil.ReadAll(httpResponse.Body)
+	respBytes, err := io.ReadAll(httpResponse.Body)
 	httpResponse.Body.Close()
 	if err != nil {
 		err = fmt.Errorf("error reading json reply: %v", err)
